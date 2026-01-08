@@ -1,0 +1,122 @@
+\documentclass[sigconf]{acmart}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{tikz-cd}
+\usepackage[nameinlink,sort]{cleveref}
+\usepackage{microtype}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage[shortlabels]{enumitem}
+\usepackage{xspace}
+\usepackage{nameref}
+\usepackage[svgnames]{xcolor}
+\usepackage{proof}
+\usepackage{minted}
+\setminted{bgcolor=Beige,autogobble,breaklines,breakafter={}}
+\usepackage{listings}
+\renewcommand\UrlFont{\color{blue}\rmfamily}
+% \usepackage{color}
+% \usepackage{amssymb}
+% \usepackage{syntax}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{bussproofs}
+
+\title{A Framework for Controlled Key Release}
+
+\author{Logan Schmalz}
+\email{loganschmalz@ku.edu}
+\orcid{1234-5678-9012}
+\affiliation{%
+  \institution{University of Kansas}
+  \city{Lawrence}
+  \state{Kansas}
+  \country{USA}
+}
+
+\author{Second Author}
+\email{\{authors\}@ku.edu}
+\orcid{1234-5678-9012}
+\affiliation{%
+  \institution{University of Kansas}
+  \city{Lawrence}
+  \state{Kansas}
+  \country{USA}
+}
+
+\begin{document}
+
+\begin{abstract}
+Modern security relies heavily on public key cryptography,
+and it is necessary to protect private keys, and secrets in general, from attackers.
+While multiple mechanisms exist to prevent secrets from being trivially read off the filesystem,
+against a highly-capable adversary it is ideal to store secrets outside of main memory.
+The TPM 2.0 is built into modern x86 hardware and is designed to be used for exactly this.
+However, a lack of tight integration between the TPM and the operating system makes it difficult to protect secrets with high availability needs from arbitrary access.
+% fails to protect keys stored in the TPM 2.0 from being used by arbitrary users, other than by fully restricting access to the TPM.
+Using only existing infrastructure (SELinux, IMA, and LUKS containers),
+we develop a stronger protection mechanism for TPM-stored secrets so access can be restricted to a specific program or user,
+without limiting access to the TPM in general.
+
+% \keywords{First keyword  \and Second keyword \and Another keyword.}
+\end{abstract}
+
+\maketitle              % typeset the header of the contribution
+%
+%
+%
+%
+\section{Introduction}
+Public key cryptography is a key component of modern security, to the point where it is expected that almost any communication on the Internet is encrypted and has signatures.
+However, it relies on the assumption that private keys are kept secret.
+When the data being transmitted is emails, and the correspondents have met in real life,
+it is easy to trust that the other person is conscientious of the security of their key.
+However, when the data being transmitted is a webpage utilizing TLS, from a server that gets thousands of requests per second,
+suddenly the security of the keys depends on the configurations and automated processes of the machines involved.
+And when the data being transmitted is evidence that a gamer is not running cheats on their computer,
+letting evidence be controlled by users is detrimental.
+
+Often, a root-level compromise to a system is game ending,
+and systems are designed to prevent such from occurring.
+While this is obviously a good design principle, despite our best efforts,
+sometimes adversaries gain root capabilities.
+So how do we protect secrets like private keys from root-level attackers?
+
+One idea to help protect secrets is to store them outside the main memory of the machine,
+and never bring them into main memory.
+The Trusted Platform Module 2.0 (TPM 2.0) is designed to do exactly this.
+It serves as a root of trust of storage for private keys and other secrets,
+and even includes features like authorization requirements via passwords to access them.
+However, the authorization features can either be satisfied by any program on the machine or require input of a password or other form of manual user verification.
+In other words, the TPM does not tightly integrate with the operating system, such that it could recognize what user or program on the operating system is trying to use any given key without manual input.
+In the case of TLS on a webserver, having an administrator input a password every time a request is made is impossible.
+For a key that needs to be made available without manual user input,
+against a root-level adversary, or even the wrong program attempting to use a private key,
+there is no meaningful built-in authorization method that protects the key.
+
+However, the TPM is also capable of storing firmware and boot measurements taken by the UEFI as part of its feature set,
+primarily to establish integrity of the system during the boot process.
+For example, this is how Secure Boot works.
+Using these features, we can ensure that Security-Enhanced Linux (SELinux) and the Linux Integrity Measurement Architecture (IMA)
+are enabled on a system with the correct configuration, and utilize these kernel-level security mechanisms to help protect TPM keys.
+
+The SELinux and IMA policies, the assisting boot-time setup and measurements,
+and the TPM configuration necessary to accomplish this are the key contributions of our work.
+Through these mechanisms, we take a step towards deeper operating system integration with TPM authorization without needing new hardware.
+We also recognize that integrating other TPM mechanisms, such as localities or resettable PCRs, into Linux kernel would allow improved implementations.
+
+
+
+%
+% 
+% ---- Bibliography ----
+%
+% BibTeX users should specify bibliography style 'splncs04'.
+% References will then be sorted and formatted in the correct style.
+%
+%\bibliographystyle{splncs04}
+\bibliographystyle{splncsnat}
+%\bibliography{sldg}
+\bibliography{bib/sldg}
+%
+\end{document}
