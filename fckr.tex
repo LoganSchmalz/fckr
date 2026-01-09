@@ -54,7 +54,7 @@ against a highly-capable adversary it is ideal to store secrets outside of main 
 The TPM 2.0 is built into modern x86 hardware and is designed to be used for exactly this.
 However, a lack of tight integration between the TPM and the operating system makes it difficult to protect secrets with high availability needs from arbitrary access.
 % fails to protect keys stored in the TPM 2.0 from being used by arbitrary users, other than by fully restricting access to the TPM.
-Using only existing infrastructure (SELinux, IMA, and LUKS containers),
+Using only existing infrastructure: SELinux, IMA, and LUKS containers,
 we develop a stronger protection mechanism for TPM-stored secrets so access can be restricted to a specific program or user,
 without limiting access to the TPM in general.
 
@@ -76,7 +76,7 @@ suddenly the security of the keys depends on the configurations and automated pr
 And when the data being transmitted is evidence that a gamer is not running cheats on their computer,
 letting evidence be controlled by users is detrimental.
 
-Often, a root-level compromise to a system is game ending,
+A root-level compromise to a system is often considered game-ending,
 and systems are designed to prevent such from occurring.
 While this is obviously a good design principle, despite our best efforts,
 sometimes adversaries gain root capabilities.
@@ -105,6 +105,49 @@ and the TPM configuration necessary to accomplish this are the key contributions
 Through these mechanisms, we take a step towards deeper operating system integration with TPM authorization without needing new hardware.
 We also recognize that integrating other TPM mechanisms, such as localities or resettable PCRs, into Linux kernel would allow improved implementations.
 
+\section{Background}
+It is important to understand how these mechanisms work for our strategy to work as expected.
+Additionally, all of the mechanisms we utilize have subtleties in implementation which are either extremely important to the security of the system or challenging to develop.
+
+\subsection{Trusted Platform Module 2.0}
+The TPM 2.0 is widely available on modern x86 machines, as it is integrated into AMD and Intel's CPU firmware (sometimes referred to as fTPM).
+It is also possible to purchase hardware TPM 2.0 modules if necessary.
+Thus it is a good target for our work, since it is common and provides a portion of the capabilities we desire for protecting keys.
+\subsubsection{Recording Boot Measurements}
+A TPM 2.0 must have at least sixteen Platform Configuration Registers (PCRs).
+PCRs can store hashes of system integrity measurements or other values through hash extension operations.
+If a PCR has a current hash value $x$, and it is being extended with a new hash $y$,
+the PCR's new value will become $x_{new} = \mathop{hash}(\mathop{concat}(x,y))$.
+By recording each hash that a PCR has been extended with and correlating it to a source,
+successfully manually reconstructing the value in a PCR effectively guarantees integrity of the correlated measurements.
+For good hash functions like SHA-256, 
+%it is considered extremely difficult to, given any $x$, come up with some $y$ such that $x_{new}$ is a particular value.
+%In other words, 
+it is effectively impossible for an adversary to discover a new $y$ which would allow $x_{new}$ to lie about any measurements that have been taken before hand.
+
+This is the primary mechanism behind Secure Boot and other measured or trusted boot strategies.
+When a machine boots, its UEFI takes measurements of system firmware and of the bootloader and stores them in PCRs,
+then the bootloader takes measurements of the kernel and other parts of the operating system and stores them in PCRs as well.
+Since the user does not have control during this early boot-time, the measurements taken suggest either integrity or alteration of the firmware and software.
+The first sixteen PCRs are non-resettable: they cannot be reset to their initial values (typically 0) except by fully rebooting the system.
+This makes TPM PCRs a trustworthy place to store boot measurements during system runtime.
+
+\subsubsection{Protecting Keys and Other Secrets}
+
+\subsection{SELinux}
+
+\subsection{Integrity Measurement Architecture}
+\subsubsection{Signing Files}
+(hashes vs. signing, x509 keys, machine owner keys)
+
+\subsection{LUKS Containers}
+
+\section{Implementation}
+\subsection{SELinux Policy}
+\subsection{IMA Policy}
+\subsection{Boot-time and Initramfs Measurements}
+
+\section{Limitations and Alternatives}
 
 
 %
