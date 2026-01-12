@@ -133,7 +133,38 @@ The first sixteen PCRs are non-resettable: they cannot be reset to their initial
 This makes TPM PCRs a trustworthy place to store boot measurements during system runtime.
 
 \subsubsection{Protecting Keys and Other Secrets}
+Most TPM-resident secrets (e.g. private keys) are only usable within the TPM.
+Because the TPM is very limited in resources, it is not necessarily capable of permanently storing every key.
+When TPM-resident objects need to be stored elsewhere, i.e. on the filesystem, due to these limitations,
+they are encrypted so they can only be used if they are reloaded into the same TPM.
+Note that having a key loaded in the TPM does not mean the TPM will allow use of the key arbitrarily.
+Think of keys loaded in the TPM as being in the cache, so they can be evicted from the cache and reloaded as necessary.
 
+It is possible to require certain conditions to be met to use a TPM-resident key.
+This can involve requiring a password, HMAC, a particular set of expected PCR values,
+or a more general "policy" to be satisfied.
+Using a password or HMAC effectively requires a secret to be known at the time of key usage.
+However, secrets like passwords obviously have no inherent protection mechanisms.
+Using PCRs effectively limits usage of a key to an administrator-approved boot configuration.
+Policy-based authorization is more advanced.
+
+TPM keys are tied to the password or policy required to use them.
+For passwords-authorized keys, there are methods to change the password;
+the key is then relocated and must be reloaded.
+For simple PCR-based authorization,
+there is no mechanism to change the expected PCRs,
+which causes problems across system updates.
+
+On the other hand,
+it is possible to change the policy required for a policy-authorized key by using a ``wildcard policy'' or ``authorized policy''.
+Wildcard policies must be signed by an administrator with a private key that is associated with a public key
+which is included as part of the details when setting up the TPM-resident key.
+Fortunately for us, a policy can also include PCR checks.
+Since it is possible to allow polices to change via wildcard policies,
+it is possible to create a key with changeable PCR requirements.
+This means that a TPM key protected by a policy can remain usable across system updates that may change boot PCRs.
+Wildcard policies can also be leveraged to explicitly allow multiple policies to authorize access to a single key,
+or utilize the same policy for different keys, including keys on different devices.
 \subsection{SELinux}
 
 \subsection{Integrity Measurement Architecture}
