@@ -67,43 +67,52 @@ without limiting access to the TPM in general.
 %
 %
 \section{Introduction}
-Public key cryptography is a key component of modern security, to the point where it is expected that almost any communication on the Internet is encrypted and has signatures.
-However, it relies on the assumption that private keys are kept secret.
-When the data being transmitted is emails, and the correspondents have met in real life,
-it is easy to trust that the other person is conscientious of the security of their key.
-However, when the data being transmitted is a webpage utilizing TLS, from a server that gets thousands of requests per second,
-suddenly the security of the keys depends on the configurations and automated processes of the machines involved.
-And when the data being transmitted is evidence that a gamer is not running cheats on their computer,
-letting evidence be controlled by users is detrimental.
+Public key cryptography is a key component of modern security, and is now ubiquitous: most Internet communication is encrypted and authenticated.  % signed ?
+However, this security relies on the assumption that private keys are kept secret.
+In small-scale, personal settings, users can reasonably trust one another to protect their keys.
+In contrast, large-scale systems such as TLS-enabled web servers handle thousands of requests per second, and the security of their keys depends entirely on machine configuration and automated processes.
+In such settings, keys must be both highly availabe and strongly protected.
+% When the data being transmitted is emails, and the correspondents have met in real life,
+% it is easy to trust that the other person is conscientious of the security of their key.
+% However, when the data being transmitted is a webpage utilizing TLS, from a server that gets thousands of requests per second,
+% suddenly the security of the keys depends on the configurations and automated processes of the machines involved.
+% TODO: consider reword or cut below
+% And when the data being transmitted is evidence that a gamer is not running cheats on their computer,
+% letting evidence be controlled by users is detrimental.
 
-A root-level compromise to a system is often considered game-ending,
-and systems are designed to prevent such from occurring.
-While this is obviously a good design principle, despite our best efforts,
-sometimes adversaries gain root capabilities.
-So how do we protect secrets like private keys from root-level attackers?
+A root-level compromise to a system is often catastrophic,
+and systems are designed to prevent such events.
+Despite best practices, however,
+adversaries sometimes gain root capabilities.
+This raises a critical question: how can secrets such as private keys be protected even from a root-level attacker, while remaining usable by legitimate services?
+% Protecting private keys gainst root-level attackers remains an open-challenge.
+% So how do we protect secrets like private keys from root-level attackers?
 
-One idea to help protect secrets is to store them outside the main memory of the machine,
-and never bring them into main memory.
+One approach is to store secrets outside the main memory, 
+and never expose them to user-space or even kernel-space.
 The Trusted Platform Module 2.0 (TPM 2.0) is designed to do exactly this.
-It serves as a root of trust of storage for private keys and other secrets,
-and even includes features like authorization requirements via passwords to access them.
-However, the authorization features can either be satisfied by any program on the machine or require input of a password or other form of manual user verification.
-In other words, the TPM does not tightly integrate with the operating system, such that it could recognize what user or program on the operating system is trying to use any given key without manual input.
-In the case of TLS on a webserver, having an administrator input a password every time a request is made is impossible.
-For a key that needs to be made available without manual user input,
-against a root-level adversary, or even the wrong program attempting to use a private key,
-there is no meaningful built-in authorization method that protects the key.
+It provides a hardware-backed root of trust for storage of private keys and other secrets,
+and supports authorization mechanisms such as passwords to access them.
+However, these mechanisms do not integrate tightly with operating system concepts such as users or programs.
+Authorization can either be satisfied by any program on the machine or requires manual user input.
+For high-availability services such as TLS, manual authorization is infeasible,
+and there is no built-in TPM mechanism that meaningfully restricts key usage to a specific user or program in the presence of a root-level adversary.
 
-However, the TPM is also capable of storing firmware and boot measurements taken by the UEFI as part of its feature set,
-primarily to establish integrity of the system during the boot process.
-For example, this is how Secure Boot works.
-Using these features, we can ensure that Security-Enhanced Linux (SELinux) and the Linux Integrity Measurement Architecture (IMA)
-are enabled on a system with the correct configuration, and utilize these kernel-level security mechanisms to help protect TPM keys.
+At the same time, the TPM supports measured and trusted boot through firmware and boot measurements recorded in Platform Configuration Registers (PCRs).
+These mechanisms are commonly used to establish system integrity, for example as part of Secure Boot.
+By leveraging these measurements, it is possble to ensure that Security-Enhanced Linux (SELinux) and the Linux Integrity Measurement Architecture (IMA)
+are enabled with an approved configuration.
+These kernel-level mechanisms can then be used to enforce fine-grained access control over TPM-resident resources.
 
-The SELinux and IMA policies, the assisting boot-time setup and measurements,
-and the TPM configuration necessary to accomplish this are the key contributions of our work.
-Through these mechanisms, we take a step towards deeper operating system integration with TPM authorization without needing new hardware.
-We also recognize that integrating other TPM mechanisms, such as localities or resettable PCRs, into Linux kernel would allow improved implementations.
+In this work, we demonstrate how existing infrastructure--SELinux, IMA, and LUKS containers--can be combined with
+TPM policy authorization to restrict access to TPM-resident secrets to specific programs or users,
+without globally restricting access to the TPM.
+We describe the required SELinux and IMA policies, boot-time measurements, and TPM configuration necessary to achieve this.
+Finally, we discuss limitations of current TPM integration and note that deeper kernel support for features such as TPM localities or resettable PCRs could enable stronger future designs.
+% The SELinux and IMA policies, the assisting boot-time setup and measurements,
+% and the TPM configuration necessary to accomplish this are the key contributions of our work.
+% Through these mechanisms, we take a step towards deeper operating system integration with TPM authorization without needing new hardware.
+% We also recognize that integrating other TPM mechanisms, such as localities or resettable PCRs, into Linux kernel would allow improved implementations.
 
 \section{Background}
 It is important to understand how these mechanisms work for our strategy to work as expected.
@@ -119,10 +128,8 @@ PCRs can store hashes of system integrity measurements or other values through h
 If a PCR has a current hash value $x$, and it is being extended with a new hash $y$,
 the PCR's new value will become $x_{new} = \mathop{hash}(\mathop{concat}(x,y))$.
 By recording each hash that a PCR has been extended with and correlating it to a source,
-successfully manually reconstructing the value in a PCR effectively guarantees integrity of the correlated measurements.
+successfully manually reconstructing the value in a PCR demonstrates integrity of the correlated measurements.
 For good hash functions like SHA-256, 
-%it is considered extremely difficult to, given any $x$, come up with some $y$ such that $x_{new}$ is a particular value.
-%In other words, 
 it is effectively impossible for an adversary to discover a new $y$ which would allow $x_{new}$ to lie about any measurements that have been taken before hand.
 
 This is the primary mechanism behind Secure Boot and other measured or trusted boot strategies.
@@ -132,13 +139,12 @@ Since the user does not have control during this early boot-time, the measuremen
 The first sixteen PCRs are non-resettable: they cannot be reset to their initial values (typically 0) except by fully rebooting the system.
 This makes TPM PCRs a trustworthy place to store boot measurements during system runtime.
 
-\subsubsection{Protecting Keys and Other Secrets}
+\subsubsection{Protecting Keys and Other Secrets}\label{sec:key-protections}
 Most TPM-resident secrets (e.g. private keys) are only usable within the TPM.
-Because the TPM is very limited in resources, it is not necessarily capable of permanently storing every key.
-When TPM-resident objects need to be stored elsewhere, i.e. on the filesystem, due to these limitations,
+When TPM-resident objects need to be stored elsewhere, i.e. on the filesystem, due to the TPM's limited resources,
 they are encrypted so they can only be used if they are reloaded into the same TPM.
-Note that having a key loaded in the TPM does not mean the TPM will allow use of the key arbitrarily.
-Think of keys loaded in the TPM as being in the cache, so they can be evicted from the cache and reloaded as necessary.
+Note that having a key loaded in the TPM does not mean the TPM will allow use of the key arbitrarily:
+a key being loaded only means it is cached, so it can be evicted from the cache and reloaded as necessary.
 
 It is possible to require certain conditions to be met to use a TPM-resident key.
 This can involve requiring a password, HMAC, a particular set of expected PCR values,
@@ -159,19 +165,57 @@ On the other hand,
 it is possible to change the policy required for a policy-authorized key by using a ``wildcard policy'' or ``authorized policy''.
 Wildcard policies must be signed by an administrator with a private key that is associated with a public key
 which is included as part of the details when setting up the TPM-resident key.
-Fortunately for us, a policy can also include PCR checks.
+Fortunately, a policy can also include PCR checks.
 Since it is possible to allow polices to change via wildcard policies,
-it is possible to create a key with changeable PCR requirements.
-This means that a TPM key protected by a policy can remain usable across system updates that may change boot PCRs.
-Wildcard policies can also be leveraged to explicitly allow multiple policies to authorize access to a single key,
-or utilize the same policy for different keys, including keys on different devices.
-\subsection{SELinux}
+it is possible to create a key with changeable PCR requirements,
+thus the key can be used after system updates which may change boot PCRs.
+Wildcard policies may also be leveraged to explicitly allow multiple policies to authorize access to a single key,
+or to utilize the same policy for different keys, including keys on different devices.
+
+\subsection{Security-Enhanced Linux}
+SELinux is one option for adding mandatory access controls to Linux and is available in most distributions by default.
+Labels added to users, files, and processes determine their permissions according to the SELinux policy installed on the system.
+These permissions can control actions such as reading and writing to certain files (including append-only writes),
+executing programs, inter-process communication, and opening specific network ports.
+We will use SELinux to protect TPM-related files.
 
 \subsection{Integrity Measurement Architecture}
+The Linux Integrity Measurement Architecture (IMA) primarily measures files and prevents them from being opened or executed if they are changed from an approved state.
+Like SELinux, IMA is widely available by default.
+When IMA is enabled \texttt{fix} mode, all files that get matched by the IMA policy get hashes added as extended file-system attributes.
+Then when IMA is enabled in \texttt{appraise} mode, opening files protected by IMA is prevented if the file contents does not match the approved hash.
+The IMA policy can include various specifications such as file owners, the active user, and whether files are being opened for reading or execution.
 \subsubsection{Signing Files}
-(hashes vs. signing, x509 keys, machine owner keys)
+It is also possible to use signatures instead of hashes to detect corruption of files.
+This allows for more dynamicity in the system, since switching IMA from \texttt{appraise} mode to \texttt{fix} mode requires a system-reboot.
+It is not safe to allow hashes to be manually overwritten at runtime, since an adversary may know the expected hash.
+On the other hand, it is safe to allow signatures to be overwritten at runtime, since an adversary should not have access to the adminstrator's signing key.
+
+By default, some distributions require any custom IMA policies and public keys that get loaded to be signed by an administrator.
+This involves adding a key certificate to the UEFI Machine Owner Keys, then signing IMA policies and X.509 keys on the filesystem with the appropriate private key.
+
+\subsubsection{Extended Verification Module}
+The Extended Verification Module (EVM) additionally protects file metadata, such as the permissions and SELinux label.
+This is valuable to ensure an adversary cannot simply adjust file metadata to bypass SELinux or IMA protections.
+EVM can be put into a mode where it uses HMAC to detect any offline filesystem modifications, or a mode where it uses signatures to detect runtime modifications as well.
 
 \subsection{LUKS Containers}
+Linux Unified Key Setup (LUKS) containers can be used to encrypt specific files on the filesystem.
+By encrypting the container with a key protected by TPM PCRs,
+it can be used protect files associated with secrets when the system might boot in an unapproved state.
+
+\subsection{Limitations of Available Mechanisms}
+As key protections were discussed in \ref{sec:key-protections},
+notice the TPM lacks authorization mechanisms that integrate directly with operating system concepts such as user permissions or programs.
+The TPM has a feature called ``localities'' which is intended to be used to indicate the origin of a command (hardware, kernel, user-level software).
+In theory, using a specific locality to restrict a secret to one program is a good idea.
+However, the TPM trusts the operating system to control localities, and there is no existing mechanism, SELinux included, designed to accomplish this.
+
+With IMA, advanced policy configuration options can make
+it easy to accidentally put a system into a state where it will not boot without putting IMA in \texttt{fix} mode.
+Improvements are being actively developed here: for example, work is being done to make restricting systems to approved kernel modules more practical.
+% TODO: improve above sentence, consider if paragraph is helpful or necessary
+
 
 \section{Implementation}
 \subsection{SELinux Policy}
