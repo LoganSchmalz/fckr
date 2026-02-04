@@ -57,7 +57,7 @@
 
 \newcommand{\tpmsign}{\texttt{tpm\_sign}\xspace}
 \newcommand{\wcp}{\texttt{WCP}\xspace}
-\newcommand{\pk}{\texttt{PK}\xspace}
+\newcommand{\pk}{\texttt{SK}\xspace}
 
 \begin{document}
 
@@ -139,6 +139,8 @@ The TPM 2.0 is widely available on modern x86 systems,
 either as firmware TPMs (fTPMs) integrated in AMD and Intel platforms or as discrete hardware modules,
 making it a practical target for our work.
 % Thus it is a good target for our work, since it is common and provides a portion of the capabilities we desire for protecting keys.
+The behavior of the TPM is standardized by the Trusted Computing Group (TCG).
+
 \subsubsection{Recording Boot Measurements}
 A TPM 2.0 must have at least sixteen Platform Configuration Registers (PCRs).
 PCRs can store hashes of system integrity measurements or other values through hash extension operations.
@@ -202,6 +204,9 @@ Like SELinux, IMA is widely available by default.
 When IMA is enabled in \texttt{fix} mode, all files that get matched by the IMA policy get hashes added as extended file-system attributes.
 In \texttt{appraise} mode, IMA prevents protected files from being opened if their contents do not match the approved hash.
 The IMA policy can include various specifications such as file owners, the active user, and whether files are being opened for reading or execution.
+The first custom IMA policy that is loaded overwrites any default policies.
+Afterwards, the custom IMA policy cannot be overwritten, only appended to.
+
 \subsubsection{Signing Files}
 It is also possible to use signatures instead of hashes to detect corruption of files.
 This allows for more dynamicity in the system, since switching IMA from \texttt{appraise} mode to \texttt{fix} mode requires a system-reboot.
@@ -268,6 +273,7 @@ The following SELinux policy (slightly condensed for presentation)
 establishes four types:
 \lstinline|tpm_sign_t| for the \tpmsign executing domain, \lstinline|tpm_sign_exec_t| for the \tpmsign binary label,
 \lstinline|tpm_sign_file_t| for protected files, and \lstinline|vault_mnt_t| for the LUKS container.
+% ? These can be included in the <file contexts> file if desired.
 We do not use \lstinline|files_type(tpm_sign_file_t)| because it automatically allows access by unconfined processes,
 but we want to restrict \lstinline|tpm_sign_file_t| to only \tpmsign. % TODO: cite https://unix.stackexchange.com/questions/729329/selinux-deny-access-to-my-custom-type-for-unconfined-t-processes
 In our development environment, these rules prevent the appropriate files from being accessed via any route other than \tpmsign.
@@ -363,7 +369,12 @@ when using EVM portable signatures, any modification to the file's \emph{metadat
 In fact, this occurs regardless of whether the file is matched in the IMA policy.
 This makes it impossible to change the SELinux labels, file owners, or UNIX permissions on the file.
 
-% TODO: example evm command
+Below is an example to sign a file with an EVM portable signature.
+In a high security environment, the private key should be held on a separate machine
+and the signature should be assigned manually to the file via \lstinline|setfattr|.
+\begin{lstlisting}
+evmctl sign --imasig --portable file -k key.priv
+\end{lstlisting}
 
 Particularly, using an EVM signature on \wcp prevents an adversary from changing its SELinux label.
 Then, the IMA policy rules above effectively prevent an adversary from relabeling a malicious binary
@@ -428,9 +439,113 @@ barring flaws in the signed shim. % TODO: cite Gentoo
 GRUB puts measurements of the command line arguments into PCR 8,
 and measurements of the initramfs and the kernel into PCR 9.
 PCR 7 indicates the general Secure Boot states, including the keys used to verify bootup. % TODO: cite Gentoo? PCR listing? TPM docs?
+While the usage of PCRs 0--7 is defined by TCG standards, other PCRs may be used differently for different boot setups. % TODO: cite
+
+\subsection{TPM Key Setup}
+After rebooting the system with our initramfs changes,
+we set up \wcp and \pk.
+
+\subsubsection{Policy Creation}
+For our development system, we have the adminstrator's private key available---in a real setup, it should be held on a different machine.
+We create the administrator keys with OpenSSL.
+\begin{lstlisting}
+openssl genrsa -out policy_key_private.pem 2048
+openssl rsa -in policy_key_private.pem -out policy_key.pem -pubout
+\end{lstlisting}
+
+The public portion of the key must be loaded in the TPM that holds \pk.
+The TPM will create a "wildcard policy digest" so \pk can require a wildcard policy.
+The important file being created here is \lstinline|authorized.policy|.
+\begin{lstlisting}
+tpm2_loadexternal -G rsa -C o -u policy_key.pem -c policy_key.ctx -n policy_key.name
+tpm2_startauthsession -S session.ctx
+tpm2_policyauthorize -S session.ctx -L authorized.policy -n policy_key.name
+tpm2_flushcontext session.ctx
+\end{lstlisting}
+
+Then the actual \wcp that sets the PCR requirements must be created and signed with the private key created earlier.
+The file \lstinline|pcr.policy_desired| is \wcp.
+Our commands create the policy on our development machine,
+but that is primarily to easily collect the PCR values.
+It should be possible to create the policy on another machine when the PCR values are shared.
+% TODO : fix for other PCRs
+\begin{lstlisting}
+tpm2_pcrread -opcr0.sha256 sha256:0
+tpm2_startauthsession -S session.ctx
+tpm2_policypcr -S session.ctx -l sha256:0 -f pcr0.sha256 -L pcr.policy_desired
+tpm2_flushcontext session.ctx
+openssl dgst -sha256 -sign policy_key_private.pem -out pcr.signature pcr.policy_desired
+\end{lstlisting}
+At this point, we protect \wcp with the \lstinline|tpm_sign_files_t| SELinux label.
+
+\subsubsection{Key Creation}
+First we create a primary key. Primary keys are deterministically generated by the TPM,
+and the same one will be recreated by re-running the following command:
+\begin{lstlisting}
+tpm2_createprimary -C o -g sha256 -G aes128cfb -c prim.ctx
+\end{lstlisting}
+Then we create \pk, whose parent key is the primary key.
+Non-primary keys are randomly generated,
+so this allows us to save \pk and reload it.
+\begin{lstlisting}
+tpm2_create -u key.pub -r key.priv -g sha256 -G "rsa2048:rsapss:null" -a "sign|fixedtpm|fixedparent|sensitivedataorigin" -C prim.ctx -c signing.ctx -L policy/authorized.policy
+tpm2_readpublic -c signing.ctx -o key.pem --format=pem
+rm prim.ctx signing.ctx
+\end{lstlisting}
+The important files here are \lstinline|key.pub| and \lstinline|key.priv|, the public and private portions of \pk.
+We also create a PEM format copy of the public key for sharing.
+
+\subsubsection{Using the Signing Key}
+Our program \tpmsign is the only program allowed to access
+\wcp (\lstinline|pcr.policy_desired|) according to our SELinux setup.
+It attempts to reload \pk from a recent session, which are not valid across reboots.
+If it fails, it will re-generate the primary key and then load \pk from its file.
+To utilize \pk, it follows the standard steps to verify a wildcard policy to authorize key usage.
+% TODO : cite example
+This is necessary for every usage of \pk.
 
 
 \subsection{LUKS Container}
+We set up a LUKS container to hold \wcp via the following steps:
+\begin{lstlisting}
+fallocate -l 1GB vault.img
+cryptsetup -v luksFormat vault.img
+losetup --find --show vault.img
+systemd-cryptenroll --wipe-slot=tpm2 --tpm2-device=auto --tpm2-pcrs=4+7+8+9+11 /dev/loop0
+losetup -d /dev/loop0
+cryptsetup -v luksOpen vault.img vault_mapper
+mkfs -t ext4 /dev/mapper/vault_mapper
+mkdir -p /mnt/vault/
+mount /dev/mapper/vault_mapper /mnt/vault
+\end{lstlisting}
+Then \wcp must be placed into the container mount and the EVM signature must be applied.
+
+\section{Evaluation}
+We experimentally demonstrated the following features of this setup:
+\begin{itemize}
+  \item Changing the initramfs, kernel, IMA policy, SELinux policy, and other items measured into PCRs results in an unapproved boot state.
+  \item When the system is booted in an unapproved state:
+  \begin{itemize}
+    \item The LUKS container will not open without a password, and \wcp will not be available.
+    Thus, \wcp cannot be relabelled either.
+    \item If somehow \wcp is available, the PCRs specified in \wcp will not match and \pk will not be usable.
+    Thus, the contents of \wcp must be maintained until the system is rebooted to an approved state.
+    \item It is not possible to corrupt the IMA policy, because IMA policies require a signature.
+  \end{itemize}
+  \item When the system is booted in an approved state (IMA and SELinux working as intended), it is not possible to:
+  \begin{itemize}
+    \item Give unapproved programs the \lstinline|tpm_sign_exec_t| label
+    \item Corrupt the \tpmsign binary to leak information
+    \item Change the label of \wcp
+    \item Corrupt the IMA or SELinux policies
+  \end{itemize}
+\end{itemize}
+
+This method is not necessarily safe to attacks that can leak arbitrary program memory, like side-channel attacks.
+Our \tpmsign binary is short-lived to minimize the surface area for these attacks.
+We can also demonstrate a rootkit that corrupts IMA and/or SELinux features, bypassing our protections.
+However, on a well-protected system, especially in a setup where IMA checks kernel modules, it would be very difficult to actually install this rootkit.
+Thus, we believe bypassing our protections on an otherwise uncorrputed kernel has equivalent difficulty to finding at least one zero-day exploit.
 
 \section{Limitations}
 There are three primary limitations of this secret protection scheme.
@@ -444,7 +559,7 @@ Against an adversary capable of bypassing SELinux and IMA, installing a rootkit,
 the contents of \wcp can be leaked such that it, and thus \pk, will be persistently available to the adversary until boot PCRs change (e.g. via a system update),
 regardless of the state of SELinux and IMA.
 This also results in the desire for an immutable SELinux policy.
-% ? Attacks in the vein of rootkits disabling SELinux/IMA functionality are demonstable.
+% ? Attacks in the vein of rootkits disabling SELinux/IMA functionality are demonstrable.
 
 The final limitation is the speed of the TPM.
 A non-virtualized TPM typically takes a few hundred milliseconds to complete the sequence of operations required for signing.
@@ -459,7 +574,7 @@ These would restrict runtime leaks to one boot cycle, however they would complic
 
 Trusted Execution Environments may provide strong memory-based protections,
 potentially sufficient to justify storing \pk in memory,
-but are not always available outside of enterprise environments.
+but are not always available on non-enterprise hardware.
 
 A bespoke kernel module protecting \wcp may be an alternative to developing complex SELinux and IMA policies, and
 a unified kernel image could be utilized to reduce the boot TCB.
