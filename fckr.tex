@@ -1,20 +1,37 @@
-\documentclass[sigconf]{acmart}
-\usepackage{amsmath}
-\usepackage{graphicx}
+\DocumentMetadata{}\documentclass[sigconf]{acmart}
+% \documentclass{llncs}
+\usepackage[T1]{fontenc}
+% \usepackage{microtype}
+% \usepackage{amsmath}
+% \usepackage{graphicx}
+% \usepackage{booktabs}
 \usepackage{tikz-cd}
-\usepackage[nameinlink,sort]{cleveref}
-\usepackage{microtype}
 \usepackage{tabularx}
-\usepackage{booktabs}
 \usepackage[shortlabels]{enumitem}
 \usepackage{xspace}
-\usepackage{nameref}
-\usepackage[svgnames]{xcolor}
 \usepackage{proof}
 \usepackage{minted}
-\setminted{bgcolor=Beige,autogobble,breaklines,breakafter={}}
 \usepackage{listings}
+% \usepackage{color}
+% \usepackage{amssymb}
+% \usepackage{syntax}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{bussproofs}
+\usepackage{nameref}
+\usepackage{hyperref}
+% \usepackage[nameinlink,sort]{cleveref}
+\renewcommand\UrlFont{\color{blue}\rmfamily}
+
+% \newcommand{\backslash}{\char`\\}
+\setminted{autogobble,breaklines,fontsize=\footnotesize}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
 \lstset{
+  upquote=false,
   basicstyle=\ttfamily\footnotesize,
   columns=fullflexible,
   keepspaces=true,
@@ -22,24 +39,28 @@
   breakatwhitespace=true,
   frame=single,
   framerule=0pt,
-  backgroundcolor=\color{lightgray},
-  postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+  showstringspaces=false,
 }
-\renewcommand\UrlFont{\color{blue}\rmfamily}
-% \usepackage{color}
-% \usepackage{amssymb}
-% \usepackage{syntax}
-\usepackage{algorithm}
-\usepackage{algpseudocode}
-\usepackage{bussproofs}
+\lstdefinestyle{bash}{
+  upquote=false,
+  prebreak=\mbox{\textbackslash},
+  % postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+  language=bash,
+  alsoletter={-},
+  stringstyle=\color{codepurple},
+  commentstyle=\color{codegreen},
+  keywordstyle=\color{magenta},
+  % morekeywords={sudo, chmod, chown, systemctl} % Add extra CLI tools here
+}
 
 \title{A Framework for Controlled Key Release}
 
+\IfClassLoadedTF{acmart}{
 % TODO : orcids
 \author{Logan Schmalz}
 \email{loganschmalz@ku.edu}
 \orcid{1234-5678-9012}
-\affiliation{%
+\affiliation{
   \institution{University of Kansas}
   \city{Lawrence}
   \state{Kansas}
@@ -49,16 +70,30 @@
 \author{Perry Alexander}
 \email{palexand@ku.edu}
 \orcid{1234-5678-9012}
-\affiliation{%
+\affiliation{
   \institution{University of Kansas}
   \city{Lawrence}
   \state{Kansas}
   \country{USA}
 }
+}
+{
+  \author{Logan Schmalz \and Perry Alexander}
+  \institute{University of Kansas\\
+    \email{\{loganschmalz, palexand\}@ku.edu}
+  }
+}
 
 \newcommand{\tpmsign}{\texttt{tpm\_sign}\xspace}
 \newcommand{\wcp}{\texttt{WCP}\xspace}
 \newcommand{\pk}{\texttt{SK}\xspace}
+\newcommand{\domaint}{\texttt{tpm\_sign\_t}\xspace}
+\newcommand{\filet}{\texttt{tpm\_sign\_file\_t}\xspace}
+\newcommand{\exect}{\texttt{tpm\_sign\_exec\_t}\xspace}
+\newcommand{\pcrpolicy}{\texttt{pcr.policy\_desired}\xspace}
+\newcommand{\systemd}{\texttt{systemd}\xspace}
+\newcommand{\appraise}{\texttt{appraise}\xspace}
+\newcommand{\fix}{\texttt{fix}\xspace}
 
 \begin{document}
 
@@ -120,7 +155,7 @@ By leveraging these measurements, it is possble to ensure that Security-Enhanced
 are enabled with an approved configuration.
 These kernel-level mechanisms can then be used to enforce fine-grained access control over TPM-resident resources.
 
-In this work, we demonstrate how existing infrastructure---SELinux, IMA, and LUKS containers---can be combined with
+In this paper, we demonstrate how existing infrastructure---SELinux, IMA, and LUKS containers---can be combined with
 TPM policy authorization to restrict access to TPM-resident secrets to specific programs or users,
 without globally restricting access to the TPM.
 We describe the required SELinux and IMA policies, boot-time measurements, and TPM configuration necessary to achieve this.
@@ -140,34 +175,35 @@ The TPM 2.0 is widely available on modern x86 systems,
 either as firmware TPMs (fTPMs) integrated in AMD and Intel platforms or as discrete hardware modules,
 making it a practical target for our work.
 % Thus it is a good target for our work, since it is common and provides a portion of the capabilities we desire for protecting keys.
-The behavior of the TPM is standardized by the Trusted Computing Group (TCG).
+The behavior of the TPM is standardized by the Trusted Computing Group (TCG) \cite{Trusted-Computing-Group:2025:TPM-2.0-Library}.
 
 \subsubsection{Recording Boot Measurements}
-A TPM 2.0 must have at least sixteen Platform Configuration Registers (PCRs).
+A TPM 2.0 for a PC must have at least 24 Platform Configuration Registers (PCRs) \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP}.
 PCRs can store hashes of system integrity measurements or other values through hash extension operations.
 If a PCR has a current hash value $x$, and it is being extended with a new hash $y$,
 the PCR's new value will become $x_{new} = \mathop{hash}(\mathop{concat}(x,y))$.
 By correlating each hash extension to its source,
 successfully reconstructing a PCR value demonstrates integrity of the recorded measurements.
-For good hash functions like SHA-256, 
-it is effectively impossible for an adversary to discover a new $y$ which would allow $x_{new}$ to lie about any measurements that have been taken beforehand.
+For cryptographically secure hash functions like SHA-256, 
+it is considered impossible for an adversary to discover $y$ such that $x_{new}$ can lie about previous measurements.
 
 This is the primary mechanism behind Secure Boot and other measured or trusted boot strategies.
-When a machine boots, its UEFI takes measurements of system firmware and of the bootloader and stores them in PCRs,
+When the system boots, its UEFI takes measurements of system firmware and of the bootloader and stores them in PCRs,
 then the bootloader takes measurements of the kernel and other parts of the operating system and stores them in PCRs as well.
 Because users lack control during boot,
 these measurements reliably indicate firmware and software integrity.
-Additionally, the first sixteen PCRs are non-resettable and persist until reboot.
-This makes TPM PCRs a trustworthy place to store boot measurements during system runtime.
+Additionally, PCRs 0--15 are non-resettable and persist until reboot.
+Those PCRs are a trustworthy place to store boot measurements during system runtime.
 
 \subsubsection{Protecting Keys and Other Secrets}\label{sec:key-protections}
 Most TPM-resident secrets (e.g. private keys) are only usable within the TPM.
+The secret will never be available directly on the operating system.
 When TPM-resident objects need to be stored elsewhere, i.e. on the filesystem, due to the TPM's limited resources,
 they are encrypted so they can only be used if they are reloaded into the same TPM.
 Loading a key in the TPM merely caches it; authorization checks are still enforced on use,
 and the key may be evicted and reloaded as necessary.
 
-It is possible to require certain conditions to be met to use a TPM-resident key.
+It is possible to require specific conditions to be satisfied to use a TPM-resident key.
 This can involve requiring a password, HMAC, a particular set of expected PCR values,
 or a more general "policy" to be satisfied.
 Password- or HMAC-based authorization requires a secret to be known at use time,
@@ -180,10 +216,10 @@ For passwords-authorized keys, there are methods to change the password;
 the key is then relocated and must be reloaded.
 For simple PCR-based authorization,
 there is no mechanism to change the expected PCRs,
-which causes problems across system updates.
+which causes problems across system updates \cite{Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys,Trusted-Computing-Group:2025:TCG-TPM-2.0-Part1-Architecture}.
 
 On the other hand,
-it is possible to change the policy required for a policy-authorized key by using a ``wildcard policy'' or ``authorized policy''.
+it is possible to change the policy required for a policy-authorized key by using a ``wildcard policy'' or ``authorized policy'' \cite{Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys}.
 Wildcard policies must be signed by an administrator with a private key that is associated with a public key
 which is included as part of the details when setting up the TPM-resident key.
 Policies may also include PCR checks.
@@ -193,50 +229,55 @@ Wildcard policies may also be leveraged to explicitly allow multiple policies to
 or to utilize the same policy for different keys, including keys on different devices.
 
 \subsection{Security-Enhanced Linux}
-SELinux provides mandatory access controls on Linux and is available by default in most distributions.
+SELinux \cite{Loscocco:2001:SELinux} provides mandatory access controls on Linux and is available by default in most distributions.
 Labels added to users, files, and processes determine their permissions according to the SELinux policy installed on the system.
 These permissions can control actions such as reading and writing to certain files (including append-only writes),
-executing programs, inter-process communication, and opening specific network ports.
+executing programs, inter-process communi\-cation, and opening specific network ports.
 We will use SELinux to protect TPM-related files.
 
-\subsection{Integrity Measurement Architecture}
-The Linux Integrity Measurement Architecture (IMA) primarily measures files and prevents them from being opened or executed if they are changed from an approved state.
+\subsection{Integrity Measurement Architecture (IMA)}
+IMA \cite{Sailer:2004:Integrity-Measurement-Architecture,IBM:IMA-Documentation} primarily measures files and prevents them from being opened or executed if they are changed from an approved state.
 Like SELinux, IMA is widely available by default.
-When IMA is enabled in \texttt{fix} mode, all files that get matched by the IMA policy get hashes added as extended file-system attributes.
-In \texttt{appraise} mode, IMA prevents protected files from being opened if their contents do not match the approved hash.
+When IMA is enabled in \fix mode\footnotemark, all files that get matched by the IMA policy get hashes added as extended file-system attributes.
+In \appraise mode, IMA prevents protected files from being opened if their contents do not match the associated hash.
 The IMA policy can include various specifications such as file owners, the active user, and whether files are being opened for reading or execution.
 The first custom IMA policy that is loaded overwrites any default policies.
 Afterwards, the custom IMA policy cannot be overwritten, only appended to.
 
+\footnotetext{
+  IMA \fix mode can only be enabled when Secure Boot is disabled in the UEFI.
+  When Secure Boot is enabled, \appraise mode is forced if IMA is enabled.
+}
+
 \subsubsection{Signing Files}
 It is also possible to use signatures instead of hashes to detect corruption of files.
-This allows for more dynamicity in the system, since switching IMA from \texttt{appraise} mode to \texttt{fix} mode requires a system-reboot.
-Allowing hashes to be overwritten at runtime is unsafe, as an adversary may know the expected value.
-In contrast, signatures can be updated safely because the administrator's signing key remains protected.
+This allows for more dynamicity in the system, as switching IMA from \appraise to \fix mode requires a system reboot, and
+allowing hashes to be overwritten at runtime is unsafe, as an adversary may know the expected value.
+In contrast, signatures can be updated safely in \appraise mode because the administrator's signing key remains protected.
 
 By default, some distributions require any custom IMA policies and public keys that get loaded to be signed by an administrator.
 This involves adding a key certificate to the UEFI Machine Owner Keys, then signing IMA policies and X.509 keys on the filesystem with the appropriate private key.
 
-\subsubsection{Extended Verification Module}
-The Extended Verification Module (EVM) additionally protects file metadata, such as the permissions and SELinux label.
+\subsubsection{Extended Verification Module (EVM)}
+EVM protects file meta\-data, such as the permissions and SELinux label.
 This is valuable to ensure an adversary cannot simply adjust file metadata to bypass SELinux or IMA protections.
-EVM can be put into a mode where it uses HMAC to detect any offline filesystem modifications, or a mode where it uses signatures to detect runtime modifications as well.
+EVM can be put into a mode where it uses HMAC to detect any offline filesystem modifications, or a mode where it uses signatures to prevent runtime modifications as well.
 
 \subsection{LUKS Containers}
 Linux Unified Key Setup (LUKS) containers can be used to encrypt specific files on the filesystem.
 By encrypting the container with a key protected by TPM PCRs,
-it can be used protect files associated with secrets when the system might boot in an unapproved state.
+it can be used protect secret files when the system might boot in an unapproved state.
 
 \subsection{Limitations of Available Mechanisms}
 As key protections were discussed in \ref{sec:key-protections},
 notice the TPM lacks authorization mechanisms that integrate directly with operating system concepts such as user permissions or programs.
-The TPM has a feature called ``localities'' which is intended to be used to indicate the origin of a command (hardware, kernel, user-level software).
+The TPM has a feature called ``localities'' which is intended to be used to indicate the origin of a command (hardware, kernel, user-level software) \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP,Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys}.
 In theory, using a specific locality to restrict a secret to one program is a good idea.
 However, the TPM trusts the operating system to control localities, and there is no existing mechanism, SELinux included, designed to accomplish this.
 
 % TODO: optional?
 % While IMA is powerful,
-% complex policy configurations can place systems into states that prevent successful boot without reverting to \texttt{fix} mode.
+% complex policy configurations can place systems into states that prevent successful boot without reverting to \fix mode.
 
 \section{Implementation}
 In our implementation, access to the TPM key \pk is restricted to a single program, which we denote \tpmsign,
@@ -251,9 +292,8 @@ preventing runtime policy modification by an adversary.
 \tpmsign utilizes wildcard policy \wcp which is the secret to access \pk.
 \wcp as the secret requires the PCRs to indicate the system booted in a state where \wcp is protected by SELinux and IMA.
 If \wcp is unprotected, the PCRs will indicate such, so \pk will not be usable.
-
 \wcp is stored within a LUKS container which automatically unlocks during boot if the boot process is executing as expected.
-In the case where an adversary reboots the system into an unapproved state, \wcp is encrypted inside the LUKS container and cannot be accessed.
+If an adversary reboots the system into an unapproved state, \wcp is encrypted inside the LUKS container and cannot be accessed.
 Thus, for an adversary to access \wcp, they must exploit the running system to figure out how to disable the IMA or SELinux policies,
 or otherwise find an exploit to read \wcp from memory or from the filesystem bypassing protections.
 
@@ -271,59 +311,63 @@ Our development system uses Fedora 42 with an out-of-the-box kernel.
 % }
 
 The following SELinux policy (slightly condensed for presentation)
-establishes four types:
-\lstinline|tpm_sign_t| for the \tpmsign executing domain, \lstinline|tpm_sign_exec_t| for the \tpmsign binary label,
-\lstinline|tpm_sign_file_t| for protected files, and \lstinline|vault_mnt_t| for the LUKS container.
+establishes three types:
+\domaint for the \tpmsign executing domain, \exect for the \tpmsign binary label,
+\filet for protected files.
 % ? These can be included in the <file contexts> file if desired.
-We do not use \lstinline|files_type(tpm_sign_file_t)| because it automatically allows access by unconfined processes,
-but we want to restrict \lstinline|tpm_sign_file_t| to only \tpmsign. % TODO: cite https://unix.stackexchange.com/questions/729329/selinux-deny-access-to-my-custom-type-for-unconfined-t-processes
+Note that some commonly used macros and attributes (e.g. \verb|files_type()| or \verb|file_type|) allow operations we do not want.
+% TODO: cite https://unix.stackexchange.com/questions/729329/selinux-deny-access-to-my-custom-type-for-unconfined-t-processes
 In our development environment, these rules prevent the appropriate files from being accessed via any route other than \tpmsign.
+% \begin{minted}{text}
 \begin{lstlisting}
 type tpm_sign_t; domain_type(tpm_sign_t);
 type tpm_sign_exec_t; files_type(tpm_sign_exec_t);
-type vault_mnt_t; files_type(vault_mnt_t);
-fs_associate(vault_mnt_t);
+type tpm_sign_file_t; fs_associate(tpm_sign_file_t);
 
-type tpm_sign_file_t;
-# Do not use files_type(), it allows some things we don't want
-fs_associate(tpm_sign_file_t);
 allow tpm_sign_t tpm_sign_file_t:file { read open create getattr };
-# Automatically label any created files
-type_transition tpm_sign_exec_t user_home_dir_t:file
-  tpm_sign_file_t;
 
-allow tpm_sign_t tpm_sign_exec_t : file { ioctl read getattr lock
+allow tpm_sign_t tpm_sign_exec_t:file { ioctl read getattr lock
   execute execute_no_trans entrypoint open } ;
-allow tpm_sign_t vault_mnt_t : dir { read write add_name
-  remove_name };
 \end{lstlisting}
+% \end{minted}
 % TODO: cut line about automatic labelling?
 
-We also utilize a short cil policy to enforce explicit deny rules. % TODO: cil stylization
-Deny rules are capable of overriding the SELinux policy to prevent otherwise allowed operations.
-The following rules prevent even a root user from relabeling a malicious program to \lstinline|tpm_sign_exec_t| or removing protections from \lstinline|tpm_sign_file_t| files.
+We also utilize a short Common Intermediate Language (CIL) policy to enforce explicit deny rules,
+which are not available in the standard policy format.
+Deny rules are capable of overriding existing policy to prevent otherwise allowed operations.
+The following rules prevent even a root user from relabeling a malicious program to \exect or removing protections from \filet files.
+% \begin{minted}{text}
 \begin{lstlisting}
 (deny domain tpm_sign_exec_t (file (relabelto)))
 (deny domain tpm_sign_file_t (file (relabelfrom)))
 \end{lstlisting}
+% \end{minted}
 
 We utilize the following rules in our development environment,
 which must be strictly adjusted for real-world systems.
 If utilizing a \tpmsign binary, only trusted programs should be able to execute it.
 This can be done by creating other types for those trusted programs and replacing the types below.
-Additionally, we allow the \lstinline|tpm_sign_t| domain to be unconfined since we trust our \tpmsign program,
-but restricting its permissions is probably reasonable as well.
+Additionally, we allow the \domaint domain to be unconfined since we trust our \tpmsign program,
+but further restricting its permissions is reasonable.
+% \begin{minted}{text}
 \begin{lstlisting}
-type_transition unconfined_t tpm_sign_exec_t : process tpm_sign_t;
-allow unconfined_t tpm_sign_t : process { transition siginh
-  rlimitinh noatsecure };
+type_transition unconfined_t tpm_sign_exec_t:process tpm_sign_t;
+allow unconfined_t tpm_sign_t:process { transition siginh rlimitinh
+  noatsecure };
 role unconfined_r types { tpm_sign_t tpm_sign_exec_t };
 unconfined_domain(tpm_sign_t);
 \end{lstlisting}
+% \end{minted}
 % TODO: allow anyone to delete file?
 
-We recommend making SELinux state immutable with the following command:
- ... %TODO
+We recommend making SELinux state immutable using the following command:
+% \begin{minted}{bash}
+% \begin{lstlisting}[style=bash]
+% setsebool -P secure_mode_policyload on
+% \end{lstlisting}
+% \end{minted}
+This makes changing policy or changing SELinux to permissive mode impossible at runtime,
+and disabling this for approved changes becomes slightly more complex.
 However, we acknowledge this may not always be possible.
 In that case, deeper investigation into protecting the system via IMA is probably necessary, and unfortunately highly system-specific.
 
@@ -331,23 +375,26 @@ Since SELinux policy is often considered frustrating to work with,
 we attempted to minimize our reliance on SELinux.
 Additionally, support for deny rules was finalized during our work on this project,
 thus we initially explored alternative mechanisms to further protect our TPM-related files.
-Concerned about an adversary either replacing the \tpmsign binary with a malicious version or
+Concerned about an adversary replacing the \tpmsign binary with a malicious version or
 modifying the SELinux labels on files we care about, we turned to IMA and EVM.
 Further, for our research outside this particular work, we must protect other infrastructure which interacts with
 the \tpmsign binary.
-While it is likely these concerns could be solved with a well-designed, immutable SELinux policy and extensive boot measurements,
-we continue to believe developing relevant IMA-based protections is slightly easier to understand and can add an additional layer of protection.
+While it is likely these concerns could be solved with a strict, immutable SELinux policy and extensive boot measurements,
+we believe IMA-based protections are simpler to understand and add an additional, more dynamic layer of protection.
 
 \subsection{IMA Policy}
 We need IMA policy to protect the integrity of \tpmsign binary and relevant files.
 We base our policy off of the default \verb|tcb| and \verb|appraise_tcb| policies.
 We include the following lines in our IMA policy:
+% \begin{minted}{bash}
 \begin{lstlisting}
 appraise obj_type=tpm_sign_exec_t appraise_type=imasig
 appraise obj_type=tpm_sign_files_t appraise_type=imasig
 \end{lstlisting}
-By using \lstinline|appraise_type=imasig| to require signatures for these files,
-it is possible to modify the files without rebooting the system and get a remote administrator's signature to correct IMA's expected value.
+% \end{minted}
+Using \verb|appraise_type=imasig| makes signatures required for these files,
+which is stronger than only requiring hashes.
+It is also then possible to modify the files without rebooting the system and get an administrator's signature to correct IMA's expected value.
 This can make it easier to update relevant files if necessary.
 
 Alternative policies may exist. For example, it may be reasonable to make all these files owned by a particular user,
@@ -357,53 +404,83 @@ More complex policies may be able to provide defense on systems where the SELinu
 For example, on high-security systems, it may even be reasonable to appraise every executed file.
 For better protections, we recommend at least including the rules of the available default IMA policies.
 
-While IMA protects from modified files, it does not prevent changing the SELinux label or changing the file owner.
-EVM can be used to protect this metadata.
-We recommend using EVM ``portable'' signatures on files whose metadata should not change\footnote{
-Using non-portable signatures may allow EVM to replace the signature with an HMAC at runtime when EVM HMAC functionality is enabled.
-We found disabling the HMAC functionality caused issues in our Fedora development environment.
-}.
-This actively protects against modifying metadata: although IMA prevents \emph{the operation} from occuring \emph{if the file is corrupt},
+We use EVM to protect file metadata by utilizing EVM ``portable'' signatures\footnotemark.
+\footnotetext{
+  Using non-portable signatures may allow EVM to replace the signature with an HMAC at runtime when EVM HMAC functionality is enabled.
+  We found disabling the HMAC functionality caused issues in our Fedora development environment.
+}
+This actively prevents modifying metadata: although IMA prevents \emph{the operation} from occuring \emph{if the file is corrupt},
 it does not inherently prevent initial corruption from occuring;
 when using EVM portable signatures, any modification to the file's \emph{metadata} will be outright prevented.
 % TODO: allow anyone to delete file? for the purposes of updating
 In fact, this occurs regardless of whether the file is matched in the IMA policy.
 This makes it impossible to change the SELinux labels, file owners, or UNIX permissions on the file.
 
-Below is an example to sign a file with an EVM portable signature.
-In a high security environment, the private key should be held on a separate machine
-and the signature should be assigned manually to the file via \lstinline|setfattr|.
-\begin{lstlisting}
-evmctl sign --imasig --portable file -k key.priv
-\end{lstlisting}
+Below is an example to sign a file with an EVM portable signature via \verb|evmctl| \cite{IBM:IMA-utilities-evmctl}.
+In a high-security environment, the private key should be held on a separate machine
+and the signature should be assigned manually to the file via \verb|setfattr|.
+% \begin{minted}{bash}
+% \begin{lstlisting}[style=bash]
+% evmctl sign --imasig --portable file -k key.priv
+% \end{lstlisting}
+% \end{minted}
 
-Particularly, using an EVM signature on \wcp prevents an adversary from changing its SELinux label.
-Then, the IMA policy rules above effectively prevent an adversary from relabeling a malicious binary
-to \lstinline|tpm_sign_exec_t|, since all files with that label require an adminstrator's signature.
+Using an EVM signature on \wcp prevents an adversary from changing its SELinux label.
+The IMA policy rules above effectively prevent an adversary from relabeling a malicious binary
+to \exect since all files with that label require an administrator's signature.
 
 \subsection{Boot-time and Initramfs Measurements}
 On our Fedora system, we add a custom \texttt{dracut} module with a script that measures the IMA and SELinux policies
-as well as the \texttt{systemd} init binary on the root filesystem.
-We measure \texttt{systemd} because, on Fedora, \texttt{systemd} is responsible for loading the custom IMA and SELinux policies when the full system init occurs\footnotemark.
+as well as the \systemd init binary on the root filesystem.
+We measure \systemd because, on Fedora, \systemd is responsible for loading the custom IMA and SELinux policies when the full system init occurs\footnotemark.
 \footnotetext{
-  We found loading IMA and SELinux policy manually during initramfs causes problems on Fedora. On other distributions,
-  loading the IMA and SELinux policy via the measurement script removes the need to measure \texttt{systemd}.
-  When the initial IMA policies measure \texttt{systemd} (i.e. \texttt{appraise\_tcb}), manual measurement is optional.
+  We found loading IMA and SELinux policy during initramfs causes problems on Fedora. 
+  When the initial IMA policies measure \systemd (i.e. \texttt{appraise\_tcb}),
+  or when the measurement script loads the policies, measuring \systemd is optional.
 }
 The script then attempts to unlock the LUKS container which contains \wcp.
 
-\begin{lstlisting}
+% \begin{minted}{bash}
+% #!/bin/sh
+% INIT="$NEWROOT/usr/bin/init"
+% SELINUX_POLICY=$(find "$NEWROOT/etc/selinux/targeted/policy" -maxdepth 1 -name 'policy.*' | sort -V | tail -n 1)
+% IMA_POLICY="$NEWROOT/etc/ima/ima-policy"
+
+% INIT_SHA="$(sha256sum "$INIT" | cut -d' ' -f1)"
+% tpm2_pcrextend 11:sha256="$INIT_SHA"
+% # ... similar for SELinux, IMA
+
+% IMG_PATH="$NEWROOT/home/user/vault.img"
+% MAPPER_NAME="vault_mapper"
+% MOUNT_POINT="$NEWROOT/mnt/vault"
+% if [ ! -e "$IMG_PATH" ]; then
+%     exit 1
+% fi
+% if ! systemd-cryptsetup attach "$MAPPER_NAME" "$IMG_PATH" - tpm2-device=auto,keyfile-timeout=0,tries=1,nofail; then
+%     exit 0
+% fi
+% for i in $(seq 1 20); do
+%     [ -b "/dev/mapper/$MAPPER_NAME" ] && break
+%     sleep 0.1
+% done
+% if [ ! -b "/dev/mapper/$MAPPER_NAME" ]; then
+%     exit 0
+% fi
+% mkdir -p "$MOUNT_POINT"
+% mount "/dev/mapper/$MAPPER_NAME" "$MOUNT_POINT" 
+% \end{minted}
+\begin{lstlisting}[style=bash]
 #!/bin/sh
 INIT="$NEWROOT/usr/bin/init"
 SELINUX_POLICY=$(find "$NEWROOT/etc/selinux/targeted/policy" -maxdepth 1 -name 'policy.*' | sort -V | tail -n 1)
 IMA_POLICY="$NEWROOT/etc/ima/ima-policy"
 
-INIT_SHA="$(sha256sum "$INIT" | cut -d' ' -f1)"
+INIT_SHA=$(sha256sum "$INIT" | cut -d' ' -f1)
 tpm2_pcrextend 11:sha256="$INIT_SHA"
 # ... similar for SELinux, IMA
 
 IMG_PATH="$NEWROOT/home/user/vault.img"
-MAPPER_NAME="vault_mapper"
+MAPPER_NAME='vault_mapper'
 MOUNT_POINT="$NEWROOT/mnt/vault"
 if [ ! -e "$IMG_PATH" ]; then
     exit 1
@@ -419,7 +496,6 @@ if [ ! -b "/dev/mapper/$MAPPER_NAME" ]; then
     exit 0
 fi
 mkdir -p "$MOUNT_POINT"
-chcon system_u:object_r:vault_mnt_t:s0 "$MOUNT_POINT"
 mount "/dev/mapper/$MAPPER_NAME" "$MOUNT_POINT" 
 \end{lstlisting}
 
@@ -429,18 +505,20 @@ Thus, it is not possible for an adversary to falsify the measurements made by th
 
 \subsubsection{Relevant TPM PCRs}
 We utilize PCR 11 for our measurements of policies.
-Other relevant PCRs are 4, 7, 8, and 9.
+Other relevant PCRs are 4, 7, 8, 9, and 14 \cite{UAPILinuxTPMPCR}.
 The UEFI puts a measurement of the GRUB bootloader in PCR 4\footnotemark.
 \footnotetext{
-On most out-of-the-box Linux distributions,
-the UEFI measures and executes a Microsoft-signed boot shim which measures the real bootloader (e.g. GRUB).
-This is an implementation detail to support Secure Boot systems easily for regular users and does not affect the security of the setup,
-barring flaws in the signed shim. % TODO: cite Gentoo
+  On some out-of-the-box Linux distributions,
+  the UEFI measures and executes a Microsoft-signed boot shim, which then measures the real bootloader (e.g. GRUB) \cite{rhboot:2026:shim}.
+  This is an implementation detail to support Secure Boot easily for regular users and does not affect the security of the setup,
+  barring flaws in the signed shim.
 }
 GRUB puts measurements of the command line arguments into PCR 8,
-and measurements of the initramfs and the kernel into PCR 9.
-PCR 7 indicates the general Secure Boot states, including the keys used to verify bootup. % TODO: cite Gentoo? PCR listing? TPM docs?
-While the usage of PCRs 0--7 is defined by TCG standards, other PCRs may be used differently for different boot setups. % TODO: cite
+and measurements of the initramfs and the kernel into PCR 9 \cite{gnu_grub_measured_boot,gentoo_wiki_secure_boot_grub}.
+PCR 7 indicates the general Secure Boot states, including the keys used to verify bootup.
+PCR 14 includes measurements of Machine Owner Keys, including those necessary for loading custom IMA policies.
+
+While the usage of PCRs 0--7 is defined by TCG standards, usage of PCRs 8--15 may vary for other boot setups \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP,UAPILinuxTPMPCR}.
 
 \subsection{TPM Key Setup}
 After rebooting the system with our initramfs changes,
@@ -449,66 +527,78 @@ we set up \wcp and \pk.
 \subsubsection{Policy Creation}
 For our development system, we have the adminstrator's private key available---in a real setup, it should be held on a different machine.
 We create the administrator keys with OpenSSL.
-\begin{lstlisting}
+% \begin{minted}{bash}
+\begin{lstlisting}[style=bash]
 openssl genrsa -out policy_key_private.pem 2048
 openssl rsa -in policy_key_private.pem -out policy_key.pem -pubout
 \end{lstlisting}
+% \end{minted}
 
 The public portion of the key must be loaded in the TPM that holds \pk.
 The TPM will create a "wildcard policy digest" so \pk can require a wildcard policy.
-The important file being created here is \lstinline|authorized.policy|.
-\begin{lstlisting}
+The important file being created here is \verb|authorized.policy|.
+% \begin{minted}{bash}
+\begin{lstlisting}[style=bash]
 tpm2_loadexternal -G rsa -C o -u policy_key.pem -c policy_key.ctx -n policy_key.name
 tpm2_startauthsession -S session.ctx
 tpm2_policyauthorize -S session.ctx -L authorized.policy -n policy_key.name
 tpm2_flushcontext session.ctx
 \end{lstlisting}
+% \end{minted}
 
-Then the actual \wcp that sets the PCR requirements must be created and signed with the private key created earlier.
-The file \lstinline|pcr.policy_desired| is \wcp.
+The wildcard policy that sets the PCR requirements must be created and signed with the private key created earlier.
+The file \pcrpolicy is \wcp.
 Our commands create the policy on our development machine,
 but that is primarily to easily collect the PCR values.
-It should be possible to create the policy on another machine when the PCR values are shared.
-% TODO : fix for other PCRs
-\begin{lstlisting}
-tpm2_pcrread -opcr0.sha256 sha256:0
+It should be possible to create the policy on another machine when the PCR values are known.
+This is the step that must be repeated to update \wcp after system updates.
+% \begin{minted}{bash}
+\begin{lstlisting}[style=bash]
+tpm2_pcrread -opcrs.sha256 sha256:7,8,9,11,14
 tpm2_startauthsession -S session.ctx
-tpm2_policypcr -S session.ctx -l sha256:0 -f pcr0.sha256 -L pcr.policy_desired
+tpm2_policypcr -S session.ctx -l sha256:7,8,9,11,14 -f pcrs.sha256 -L pcr.policy_desired
 tpm2_flushcontext session.ctx
 openssl dgst -sha256 -sign policy_key_private.pem -out pcr.signature pcr.policy_desired
 \end{lstlisting}
-At this point, we protect \wcp with the \lstinline|tpm_sign_files_t| SELinux label.
+% \end{minted}
 
 \subsubsection{Key Creation}
 First we create a primary key. Primary keys are deterministically generated by the TPM,
 and the same one will be recreated by re-running the following command:
-\begin{lstlisting}
+% \begin{minted}{bash}
+\begin{lstlisting}[style=bash]
 tpm2_createprimary -C o -g sha256 -G aes128cfb -c prim.ctx
 \end{lstlisting}
+% \end{minted}
 Then we create \pk, whose parent key is the primary key.
 Non-primary keys are randomly generated,
 so this allows us to save \pk and reload it.
-\begin{lstlisting}
-tpm2_create -u key.pub -r key.priv -g sha256 -G "rsa2048:rsapss:null" -a "sign|fixedtpm|fixedparent|sensitivedataorigin" -C prim.ctx -c signing.ctx -L policy/authorized.policy
+% \begin{minted}{bash}
+\begin{lstlisting}[style=bash]
+tpm2_create -u key.pub -r key.priv -g sha256 -G 'rsa2048:rsapss:null' -a 'sign|fixedtpm|fixedparent|sensitivedataorigin' -C prim.ctx -c signing.ctx -L policy/authorized.policy
 tpm2_readpublic -c signing.ctx -o key.pem --format=pem
 rm prim.ctx signing.ctx
 \end{lstlisting}
-The important files here are \lstinline|key.pub| and \lstinline|key.priv|, the public and private portions of \pk.
+% \end{minted}
+The important files here are \verb|key.pub| and \verb|key.priv|, the public and private portions of \pk.
 We also create a PEM format copy of the public key for sharing.
 
 \subsubsection{Using the Signing Key}
 Our program \tpmsign is the only program allowed to access
-\wcp (\lstinline|pcr.policy_desired|) according to our SELinux setup.
+\wcp (\pcrpolicy) by labeling it \exect.
 It attempts to reload \pk from a recent session, which are not valid across reboots.
 If it fails, it will re-generate the primary key and then load \pk from its file.
-To utilize \pk, it follows the standard steps to verify a wildcard policy to authorize key usage.
-% TODO : cite example
+To utilize \pk, it follows the standard steps to verify a wildcard policy to authorize key usage \cite{tpm2-software:2026:policyauthorize}.
 This is necessary for every usage of \pk.
+% TODO : decide the best wording or place for this sentence
+It is alternatively possible to make the primary key permanently stored in the TPM, if necessary for speed.
 
 
 \subsection{LUKS Container}
+% TODO : maybe cite something here?
 We set up a LUKS container to hold \wcp via the following steps:
-\begin{lstlisting}
+% \begin{minted}{bash}
+\begin{lstlisting}[style=bash]
 fallocate -l 1GB vault.img
 cryptsetup -v luksFormat vault.img
 losetup --find --show vault.img
@@ -519,6 +609,7 @@ mkfs -t ext4 /dev/mapper/vault_mapper
 mkdir -p /mnt/vault/
 mount /dev/mapper/vault_mapper /mnt/vault
 \end{lstlisting}
+% \end{minted}
 Then \wcp must be placed into the container mount and the EVM signature must be applied.
 
 \section{Evaluation}
@@ -529,13 +620,13 @@ We experimentally demonstrated the following features of this setup:
   \begin{itemize}
     \item The LUKS container will not open without a password, and \wcp will not be available.
     Thus, \wcp cannot be relabelled either.
-    \item If somehow \wcp is available, the PCRs specified in \wcp will not match and \pk will not be usable.
+    \item If somehow the container is unlocked and \wcp is available, the PCRs specified in \wcp will not match and \pk will not be usable.
     Thus, the contents of \wcp must be maintained until the system is rebooted to an approved state.
     \item It is not possible to corrupt the IMA policy, because IMA policies require a signature.
   \end{itemize}
   \item When the system is booted in an approved state (IMA and SELinux working as intended), it is not possible to:
   \begin{itemize}
-    \item Give unapproved programs the \lstinline|tpm_sign_exec_t| label
+    \item Give unapproved programs the \exect label
     \item Corrupt the \tpmsign binary to leak information
     \item Change the label of \wcp
     \item Corrupt the IMA or SELinux policies
@@ -544,15 +635,20 @@ We experimentally demonstrated the following features of this setup:
 
 This method is not necessarily safe to attacks that can leak arbitrary program memory, like side-channel attacks.
 Our \tpmsign binary is short-lived to minimize the surface area for these attacks.
-We can also demonstrate a rootkit that corrupts IMA and/or SELinux features, bypassing our protections.
+We can also demonstrate a rootkit that corrupts IMA and/or SELinux behavior, bypassing our protections.
 However, on a well-protected system, especially in a setup where IMA checks kernel modules, it would be very difficult to actually install this rootkit.
 Thus, we believe bypassing our protections on an otherwise uncorrputed kernel has equivalent difficulty to finding at least one zero-day exploit.
+
+Even though the LUKS container strategy should protect \wcp (or a password) sufficiently,
+\wcp including PCRs related to our protection mechanisms provides some extra assurance that if \pk is used, then the system at least booted in a state approved by \wcp.
+For example, since it is sometimes necessary to unlock the LUKS container when the system is in an unapproved state to accomodate a system update, it is still beneficial to know \pk cannot be used at that moment.
 
 \section{Limitations}
 There are three primary limitations of this secret protection scheme.
 The first is in real-world scenarios, strong IMA policies (protecting infrastructure other than ours) can make systems annoying to change or update.
 This is a recognized problem and work is being done to mitigate this---for example,
-by making restrictions on approved kernel modules more practical---but such improvements are not yet widely deployed.
+by making restrictions on approved kernel modules more practical.
+%---but such improvements are not yet widely deployed.
 % TODO: cite
 
 The second limitation is assuming IMA and SELinux protections are not bypassed under an approved boot.
@@ -574,11 +670,11 @@ Alternatively, reprovisioning \pk on every approved boot may be feasible in some
 These would restrict runtime leaks to one boot cycle, however they would complicate policy or key management respectively, especially for remote parties.
 
 Trusted Execution Environments may provide strong memory-based protections,
-potentially sufficient to justify storing \pk in memory,
+potentially sufficient to justify storing \wcp or \pk directly in memory,
 but are not always available on non-enterprise hardware.
 
 A bespoke kernel module protecting \wcp may be an alternative to developing complex SELinux and IMA policies, and
-a unified kernel image could be utilized to reduce the boot TCB.
+a unified kernel image could reduce boot and measurement complexity.
 
 We particularly believe implementing support for TPM localities on Linux and SELinux (or equivalent) to
 restrict access of TPM localities to certain programs would be a strong step forward.
@@ -596,9 +692,51 @@ However, adversaries capable of corrupting the kernel would still be able to wor
 % BibTeX users should specify bibliography style 'splncs04'.
 % References will then be sorted and formatted in the correct style.
 %
-%\bibliographystyle{splncs04}
-\bibliographystyle{splncsnat}
-%\bibliography{sldg}
-\bibliography{bib/sldg}
-%
+\bibliographystyle{splncs04}
+%\bibliographystyle{splncsnat}
+\bibliography{ref}
+
+\appendix
+\section{Details of SELinux Policy}
+There are multiple variants on the SELinux policy setup to accomplish the same protections as in the main portion of the text.
+Here, we discuss some of the nuances for various choices.
+Notably, in almost all of the basic SELinux policy tutorials, these details are not included.
+This is largely because most SELinux policies for applications do not need to be as strict as ours, and instead simply need to follow a relatively standard template.
+
+The first important detail to note is the existence of the SELinux Reference Policy. % TODO : cite
+The Reference Policy serves as the basis for most out-of-the-box SELinux policies and includes some useful macros which are widely used.
+One particular macro is \verb|files_type(x)|, which nominally associates the type \verb|x| with the type \verb|file_type|.
+The \verb|file_type| type includes permissions allowing unconfined contexts to access and manipulate files with label \verb|x|.
+This is entirely reasonable in most situations where an administrator should be easily allowed to manipulate files.
+However, it is not suitable for developing protections such as ours,
+as unconfined contexts are given the following permissions:
+\begin{lstlisting}
+allow files_unconfined_type file_type:file { exec_file_perms manage_file_perms mounton quotaon relabel_file_perms watch watch_mount watch_reads watch_sb watch_with_perm };
+\end{lstlisting}
+% TODO: cite https://github.com/SELinuxProject/refpolicy/blob/2cba8023863718709d0349faf62a9f4da2248a3f/policy/modules/kernel/files.te#L230,
+% TODO: cite https://github.com/SELinuxProject/refpolicy/blob/2cba8023863718709d0349faf62a9f4da2248a3f/policy/support/obj_perm_sets.spt#L158
+We found ourselves concerned with
+\verb|exec_file_perms|, which is a macro that includes \verb|open| and \verb|read|.
+and with \verb|relabel_file_perms|, which includes \verb|relabelfrom| and \verb|relabelto|.
+By parsing through these definitions in the Reference Policy, it is possible to recreate them while excluding undesirable permissions.
+
+The second important detail to note is the implementation of deny rules in the SELinux Common Intermediate Language.
+Deny rules are capable of overriding existing policy, however they are not available in the standard SELinux syntax.
+Since deny rules are very explicit, they can compensate for pre-existing SELinux policy modules which leave unintended security holes.
+Thus, they are a suitable alternative to the above process of manually recreating simple things which could be based on existing macros.
+For example, our to recreate our policy while making denials explicit:
+\begin{lstlisting}
+(deny domain tpm_sign_exec_t (file (relabelto)))
+(deny domain tpm_sign_file_t (file (relabelfrom)))
+
+(typeattribute tpm_sign_file_deny)
+(typeattributeset tpm_sign_file_deny (not tpm_sign_t))
+(deny tpm_sign_file_deny tpm_sign_file_t (file (read)))
+\end{lstlisting}
+The \verb|typeattribute|/\verb|typeattributeset| declaration is necessary to determine which types should be denied in the last deny rule
+via logical expressions like \verb|not|, \verb|and|, \verb|or|, etc.
+This is because, in CIL policy, rules (\verb|allow|, \verb|deny|, etc.) must take an identifier in the first and second arguments.
+In our policy, this allows us to deny reads from every domain except \domaint.
+
+
 \end{document}
