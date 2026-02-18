@@ -76,13 +76,14 @@
   \state{Kansas}
   \country{USA}
 }
-}
+}{}
+\IfClassLoadedTF{llncs}
 {
   \author{Logan Schmalz \and Perry Alexander}
   \institute{University of Kansas\\
-    \email{\{loganschmalz, palexand\}@ku.edu}
+    \email{\{loganschmalz,palexand\}@ku.edu}
   }
-}
+}{}
 
 \newcommand{\tpmsign}{\texttt{tpm\_sign}\xspace}
 \newcommand{\wcp}{\texttt{WCP}\xspace}
@@ -692,7 +693,8 @@ However, adversaries capable of corrupting the kernel would still be able to wor
 % BibTeX users should specify bibliography style 'splncs04'.
 % References will then be sorted and formatted in the correct style.
 %
-\bibliographystyle{splncs04}
+\IfClassLoadedTF{acmart}{\bibliographystyle{ACM-Reference-Format}}{}
+\IfClassLoadedTF{llncs}{\bibliographystyle{splncs04}}{}
 \bibliography{ref}
 
 \appendix
