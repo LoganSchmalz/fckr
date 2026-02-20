@@ -95,6 +95,7 @@
 \newcommand{\systemd}{\texttt{systemd}\xspace}
 \newcommand{\appraise}{\texttt{appraise}\xspace}
 \newcommand{\fix}{\texttt{fix}\xspace}
+\newcommand{\initramfs}{\texttt{initramfs}\xspace}
 
 \begin{document}
 
@@ -276,7 +277,7 @@ The TPM has a feature called ``localities'' which is intended to be used to indi
 In theory, using a specific locality to restrict a secret to one program is a good idea.
 However, the TPM trusts the operating system to control localities, and there is no existing mechanism, SELinux included, designed to accomplish this.
 
-% TODO: optional?
+% ? optional
 % While IMA is powerful,
 % complex policy configurations can place systems into states that prevent successful boot without reverting to \fix mode.
 
@@ -311,24 +312,14 @@ Our development system uses Fedora 42 with an out-of-the-box kernel.
 %         type user_home_dir_t;
 % }
 
-The following SELinux policy (slightly condensed for presentation)
-establishes three types:
-\domaint for the \tpmsign executing domain, \exect for the \tpmsign binary label,
-\filet for protected files.
-% ? These can be included in the <file contexts> file if desired.
-Note that some commonly used macros and attributes (e.g. \verb|files_type()| or \verb|file_type|) allow operations we do not want.
-% TODO: cite https://unix.stackexchange.com/questions/729329/selinux-deny-access-to-my-custom-type-for-unconfined-t-processes
-In our development environment, these rules prevent the appropriate files from being accessed via any route other than \tpmsign.
+The following SELinux policy establishes three types:
+\domaint for the \tpmsign executing domain, \exect for the \tpmsign executable, and \filet for protected files.
 % \begin{minted}{text}
 \begin{lstlisting}
-type tpm_sign_t; domain_type(tpm_sign_t);
-type tpm_sign_exec_t; files_type(tpm_sign_exec_t);
-type tpm_sign_file_t; fs_associate(tpm_sign_file_t);
-
+type tpm_sign_t; type tpm_sign_exec_t;
+application_domain(tpm_sign_t, tpm_exec_t);
+type tpm_sign_file_t; files_type(tpm_sign_file_t);
 allow tpm_sign_t tpm_sign_file_t:file { read open create getattr };
-
-allow tpm_sign_t tpm_sign_exec_t:file { ioctl read getattr lock
-  execute execute_no_trans entrypoint open } ;
 \end{lstlisting}
 % \end{minted}
 % TODO: cut line about automatic labelling?
@@ -341,20 +332,34 @@ The following rules prevent even a root user from relabeling a malicious program
 \begin{lstlisting}
 (deny domain tpm_sign_exec_t (file (relabelto)))
 (deny domain tpm_sign_file_t (file (relabelfrom)))
+(typeattribute tpm_sign_file_deny)
+(typeattributeset tpm_sign_file_deny (not tpm_sign_t))
+(deny tpm_sign_file_deny tpm_sign_file_t (file (read)))
+(typeattribute tpm_sign_deny)
+(typeattributeset tpm_sign_deny (unconfined_t))
+(deny tpm_sign_deny tpm_sign_t (process (transition)))
 \end{lstlisting}
 % \end{minted}
+The need for these deny rules is two-fold.
+Primarily, they prevent some default allowances made in our policy because we have used macros for simplification.
+However, they are slightly too permissive for our case.\footnotemark
+\footnotetext{
+  See Appendix~\ref{appendix:selinux} for more details.
+}
+Secondarily, the deny rules serve as a clear and robust way to restrict permissions.
+Deny rules will prevent accidental allowances due to future policy changes.
+Note that the second \verb|typeattributeset|, corresponding to the last deny rule, should be adjusted to be more similar to the first,
+if only specific programs should be able to launch \tpmsign.
 
-We utilize the following rules in our development environment,
+We remove the last deny rule and utilize the following rules in our development environment,
 which must be strictly adjusted for real-world systems.
-If utilizing a \tpmsign binary, only trusted programs should be able to execute it.
-This can be done by creating other types for those trusted programs and replacing the types below.
+The key adjustments are which types that can transition to \domaint.
 Additionally, we allow the \domaint domain to be unconfined since we trust our \tpmsign program,
 but further restricting its permissions is reasonable.
 % \begin{minted}{text}
 \begin{lstlisting}
 type_transition unconfined_t tpm_sign_exec_t:process tpm_sign_t;
-allow unconfined_t tpm_sign_t:process { transition siginh rlimitinh
-  noatsecure };
+allow unconfined_t tpm_sign_t:process transition;
 role unconfined_r types { tpm_sign_t tpm_sign_exec_t };
 unconfined_domain(tpm_sign_t);
 \end{lstlisting}
@@ -363,9 +368,9 @@ unconfined_domain(tpm_sign_t);
 
 We recommend making SELinux state immutable using the following command:
 % \begin{minted}{bash}
-% \begin{lstlisting}[style=bash]
-% setsebool -P secure_mode_policyload on
-% \end{lstlisting}
+\begin{lstlisting}[style=bash]
+setsebool -P secure_mode_policyload on
+\end{lstlisting}
 % \end{minted}
 This makes changing policy or changing SELinux to permissive mode impossible at runtime,
 and disabling this for approved changes becomes slightly more complex.
@@ -384,9 +389,9 @@ While it is likely these concerns could be solved with a strict, immutable SELin
 we believe IMA-based protections are simpler to understand and add an additional, more dynamic layer of protection.
 
 \subsection{IMA Policy}
-We need IMA policy to protect the integrity of \tpmsign binary and relevant files.
-We base our policy off of the default \verb|tcb| and \verb|appraise_tcb| policies.
-We include the following lines in our IMA policy:
+We need IMA to protect the integrity of \tpmsign binary and relevant files.
+Our policy imitates the default \verb|tcb| and \verb|appraise_tcb| policies,
+then we include the following lines:
 % \begin{minted}{bash}
 \begin{lstlisting}
 appraise obj_type=tpm_sign_exec_t appraise_type=imasig
@@ -398,14 +403,14 @@ which is stronger than only requiring hashes.
 It is also then possible to modify the files without rebooting the system and get an administrator's signature to correct IMA's expected value.
 This can make it easier to update relevant files if necessary.
 
-Alternative policies may exist. For example, it may be reasonable to make all these files owned by a particular user,
+Alternative policies exist. For example, it may be reasonable to make all these files owned by a particular user,
 and protect them based on the file owner.
+On high-security systems, it may even be reasonable to appraise every executed file.
 More complex policies may be able to provide defense on systems where the SELinux state cannot be immutable
-(although this likely makes the system far more difficult to work with than making SELinux state immutable).
-For example, on high-security systems, it may even be reasonable to appraise every executed file.
+(although this likely makes the system more difficult to work with than making SELinux state immutable).
 For better protections, we recommend at least including the rules of the available default IMA policies.
 
-We use EVM to protect file metadata by utilizing EVM ``portable'' signatures\footnotemark.
+We use EVM to protect file metadata by utilizing EVM ``portable'' signatures.\footnotemark
 \footnotetext{
   Using non-portable signatures may allow EVM to replace the signature with an HMAC at runtime when EVM HMAC functionality is enabled.
   We found disabling the HMAC functionality caused issues in our Fedora development environment.
@@ -421,9 +426,9 @@ Below is an example to sign a file with an EVM portable signature via \verb|evmc
 In a high-security environment, the private key should be held on a separate machine
 and the signature should be assigned manually to the file via \verb|setfattr|.
 % \begin{minted}{bash}
-% \begin{lstlisting}[style=bash]
-% evmctl sign --imasig --portable file -k key.priv
-% \end{lstlisting}
+\begin{lstlisting}[style=bash]
+evmctl sign --imasig --portable file -k key.priv
+\end{lstlisting}
 % \end{minted}
 
 Using an EVM signature on \wcp prevents an adversary from changing its SELinux label.
@@ -432,8 +437,8 @@ to \exect since all files with that label require an administrator's signature.
 
 \subsection{Boot-time and Initramfs Measurements}
 On our Fedora system, we add a custom \texttt{dracut} module with a script that measures the IMA and SELinux policies
-as well as the \systemd init binary on the root filesystem.
-We measure \systemd because, on Fedora, \systemd is responsible for loading the custom IMA and SELinux policies when the full system init occurs\footnotemark.
+as well as the \systemd init binary on the root filesystem during the \initramfs boot stage.
+We measure \systemd because, on Fedora, \systemd is responsible for loading the custom IMA and SELinux policies when the full system init occurs.\footnotemark
 \footnotetext{
   We found loading IMA and SELinux policy during initramfs causes problems on Fedora. 
   When the initial IMA policies measure \systemd (i.e. \texttt{appraise\_tcb}),
@@ -500,14 +505,14 @@ mkdir -p "$MOUNT_POINT"
 mount "/dev/mapper/$MAPPER_NAME" "$MOUNT_POINT" 
 \end{lstlisting}
 
-Since this script is installed in \texttt{initramfs},
-removal of the script or other unapproved modifications of the \texttt{initramfs} will be reflected in a PCR.
+Since this script is installed in \initramfs,
+removal of the script or other unapproved modifications of the \initramfs will be reflected in a PCR.
 Thus, it is not possible for an adversary to falsify the measurements made by this script (or its absence).
 
 \subsubsection{Relevant TPM PCRs}
 We utilize PCR 11 for our measurements of policies.
 Other relevant PCRs are 4, 7, 8, 9, and 14 \cite{UAPILinuxTPMPCR}.
-The UEFI puts a measurement of the GRUB bootloader in PCR 4\footnotemark.
+The UEFI puts a measurement of the GRUB bootloader in PCR 4.\footnotemark
 \footnotetext{
   On some out-of-the-box Linux distributions,
   the UEFI measures and executes a Microsoft-signed boot shim, which then measures the real bootloader (e.g. GRUB) \cite{rhboot:2026:shim}.
@@ -515,14 +520,14 @@ The UEFI puts a measurement of the GRUB bootloader in PCR 4\footnotemark.
   barring flaws in the signed shim.
 }
 GRUB puts measurements of the command line arguments into PCR 8,
-and measurements of the initramfs and the kernel into PCR 9 \cite{gnu_grub_measured_boot,gentoo_wiki_secure_boot_grub}.
+and measurements of the \initramfs and the kernel into PCR 9 \cite{gnu_grub_measured_boot,gentoo_wiki_secure_boot_grub}.
 PCR 7 indicates the general Secure Boot states, including the keys used to verify bootup.
 PCR 14 includes measurements of Machine Owner Keys, including those necessary for loading custom IMA policies.
 
 While the usage of PCRs 0--7 is defined by TCG standards, usage of PCRs 8--15 may vary for other boot setups \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP,UAPILinuxTPMPCR}.
 
 \subsection{TPM Key Setup}
-After rebooting the system with our initramfs changes,
+After rebooting the system with our \initramfs changes,
 we set up \wcp and \pk.
 
 \subsubsection{Policy Creation}
@@ -616,7 +621,7 @@ Then \wcp must be placed into the container mount and the EVM signature must be 
 \section{Evaluation}
 We experimentally demonstrated the following features of this setup:
 \begin{itemize}
-  \item Changing the initramfs, kernel, IMA policy, SELinux policy, and other items measured into PCRs results in an unapproved boot state.
+  \item Changing the \initramfs, kernel, IMA policy, SELinux policy, and other items measured into PCRs results in an unapproved boot state.
   \item When the system is booted in an unapproved state:
   \begin{itemize}
     \item The LUKS container will not open without a password, and \wcp will not be available.
@@ -698,7 +703,7 @@ However, adversaries capable of corrupting the kernel would still be able to wor
 \bibliography{ref}
 
 \appendix
-\section{Details of SELinux Policy}
+\section{Details of SELinux Policy}\label{appendix:selinux}
 There are multiple variants on the SELinux policy setup to accomplish the same protections as in the main portion of the text.
 Here, we discuss some of the nuances for various choices.
 Notably, in almost all of the basic SELinux policy tutorials, these details are not included.
@@ -719,6 +724,7 @@ allow files_unconfined_type file_type:file { exec_file_perms manage_file_perms m
 We found ourselves concerned with
 \verb|exec_file_perms|, which is a macro that includes \verb|open| and \verb|read|.
 and with \verb|relabel_file_perms|, which includes \verb|relabelfrom| and \verb|relabelto|.
+In Fedora's \verb|targeted| policy specifically, unconfined contexts are also able to transition to any domain type. % TODO: improve
 By parsing through these definitions in the Reference Policy, it is possible to recreate them while excluding undesirable permissions.
 
 The second important detail to note is the implementation of deny rules in the SELinux Common Intermediate Language.
