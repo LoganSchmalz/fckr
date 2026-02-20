@@ -198,9 +198,12 @@ Additionally, PCRs 0--15 are non-resettable and persist until reboot.
 Those PCRs are a trustworthy place to store boot measurements during system runtime.
 
 \subsubsection{Protecting Keys and Other Secrets}\label{sec:key-protections}
-Most TPM-resident secrets (e.g. private keys) are only usable within the TPM.
-The secret will never be available directly on the operating system.
-When TPM-resident objects need to be stored elsewhere, i.e. on the filesystem, due to the TPM's limited resources,
+Most TPM-resident private keys are only usable within the TPM, so such keys will never be available on the operating system.\footnotemark
+\footnotetext{
+  Other secrets (including some keys, if desired) can be stored in the TPM and released to the operating system.
+  We focus on keys that can only be used by the TPM.
+}
+When they need to be stored elsewhere, i.e. on the filesystem, due to the TPM's limited resources,
 they are encrypted so they can only be used if they are reloaded into the same TPM.
 Loading a key in the TPM merely caches it; authorization checks are still enforced on use,
 and the key may be evicted and reloaded as necessary.
