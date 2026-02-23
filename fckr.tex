@@ -344,14 +344,14 @@ The following rules prevent even a root user from relabeling a malicious program
 \end{lstlisting}
 % \end{minted}
 The need for these deny rules is two-fold.
-Primarily, they prevent some default allowances made in our policy because we have used macros for simplification.
-However, they are slightly too permissive for our case.\footnotemark
+Primarily, they prevent some default allowances made in our policy because we have used macros for simplification,
+but the macros are slightly too permissive for our case.\footnotemark
 \footnotetext{
   See Appendix~\ref{appendix:selinux} for more details.
 }
-Secondarily, the deny rules serve as a clear and robust way to restrict permissions.
-Deny rules will prevent accidental allowances due to future policy changes.
-Note that the second \verb|typeattributeset|, corresponding to the last deny rule, should be adjusted to be more similar to the first,
+Secondarily, the deny rules serve as a clear and robust way to restrict permissions,
+and will prevent accidental allowances due to future policy changes.
+Note that the second \verb|typeattributeset| (for the last deny rule) should be made more similar to the first
 if only specific programs should be able to launch \tpmsign.
 
 We remove the last deny rule and utilize the following rules in our development environment,
@@ -382,10 +382,10 @@ In that case, deeper investigation into protecting the system via IMA is probabl
 
 Since SELinux policy is often considered frustrating to work with,
 we attempted to minimize our reliance on SELinux.
-Additionally, support for deny rules was finalized during our work on this project,
-thus we initially explored alternative mechanisms to further protect our TPM-related files.
+Additionally, since support for deny rules was finalized during our work on this project,
+we initially explored alternative mechanisms to further protect our TPM-related files.
 Concerned about an adversary replacing the \tpmsign binary with a malicious version or
-modifying the SELinux labels on files we care about, we turned to IMA and EVM.
+modifying the relevant SELinux labels, we turned to IMA and EVM.
 Further, for our research outside this particular work, we must protect other infrastructure which interacts with
 the \tpmsign binary.
 While it is likely these concerns could be solved with a strict, immutable SELinux policy and extensive boot measurements,
@@ -406,12 +406,12 @@ which is stronger than only requiring hashes.
 It is also then possible to modify the files without rebooting the system and get an administrator's signature to correct IMA's expected value.
 This can make it easier to update relevant files if necessary.
 
-Alternative policies exist. For example, it may be reasonable to make all these files owned by a particular user,
-and protect them based on the file owner.
-On high-security systems, it may even be reasonable to appraise every executed file.
-More complex policies may be able to provide defense on systems where the SELinux state cannot be immutable
+A wide range of IMA policies exist, such as appraising all files owned by a particular user or appraising any executed file.
+By leveraging various options, it should be possible to cover any desired subset of the filesystem
+and ensure the desired level of integrity.
+Complex policies may be able to provide defense on systems where the SELinux state cannot be immutable
 (although this likely makes the system more difficult to work with than making SELinux state immutable).
-For better protections, we recommend at least including the rules of the available default IMA policies.
+At the least, we recommend including the rules of the available default IMA policies. % TODO : cite default rules page
 
 We use EVM to protect file metadata by utilizing EVM ``portable'' signatures.\footnotemark
 \footnotetext{
