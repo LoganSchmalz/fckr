@@ -406,11 +406,10 @@ which is stronger than only requiring hashes.
 It is also then possible to modify the files without rebooting the system and get an administrator's signature to correct IMA's expected value.
 This can make it easier to update relevant files if necessary.
 
-A wide range of IMA policies exist, such as appraising all files owned by a particular user or appraising any executed file.
-By leveraging various options, it should be possible to cover any desired subset of the filesystem
+The flexibility of IMA policy configuration should make it possible to cover any desired subset of the filesystem
 and ensure the desired level of integrity.
 Complex policies may be able to provide defense on systems where the SELinux state cannot be immutable
-(although this likely makes the system more difficult to work with than making SELinux state immutable).
+(although this could make the system more difficult to work with than making SELinux state immutable).
 At the least, we recommend including the rules of the available default IMA policies. % TODO : cite default rules page
 
 We use EVM to protect file metadata by utilizing EVM ``portable'' signatures.\footnotemark
