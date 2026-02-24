@@ -5,8 +5,8 @@
 % \usepackage{amsmath}
 % \usepackage{graphicx}
 % \usepackage{booktabs}
-\usepackage{tikz-cd}
-\usepackage{tabularx}
+% \usepackage{tikz-cd}
+% \usepackage{tabularx}
 \usepackage[shortlabels]{enumitem}
 \usepackage{xspace}
 \usepackage{proof}
@@ -21,6 +21,8 @@
 \usepackage{nameref}
 \usepackage{hyperref}
 % \usepackage[nameinlink,sort]{cleveref}
+\usepackage{zref}
+\usepackage{zref-clever}
 \renewcommand\UrlFont{\color{blue}\rmfamily}
 
 % \newcommand{\backslash}{\char`\\}
@@ -274,7 +276,7 @@ By encrypting the container with a key protected by TPM PCRs,
 it can be used protect secret files when the system might boot in an unapproved state.
 
 \subsection{Limitations of Available Mechanisms}
-As key protections were discussed in \ref{sec:key-protections},
+As key protections were discussed in \zcref[S]{sec:key-protections},
 notice the TPM lacks authorization mechanisms that integrate directly with operating system concepts such as user permissions or programs.
 The TPM has a feature called ``localities'' which is intended to be used to indicate the origin of a command (hardware, kernel, user-level software) \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP,Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys}.
 In theory, using a specific locality to restrict a secret to one program is a good idea.
@@ -345,10 +347,7 @@ The following rules prevent even a root user from relabeling a malicious program
 % \end{minted}
 The need for these deny rules is two-fold.
 Primarily, they prevent some default allowances made in our policy because we have used macros for simplification,
-but the macros are slightly too permissive for our case.\footnotemark
-\footnotetext{
-  See Appendix~\ref{appendix:selinux} for more details.
-}
+but the macros are slightly too permissive for our case (see \zcref[S]{appendix:selinux} for further details).
 Secondarily, the deny rules serve as a clear and robust way to restrict permissions,
 and will prevent accidental allowances due to future policy changes.
 Note that the second \verb|typeattributeset| (for the last deny rule) should be made more similar to the first
@@ -391,7 +390,7 @@ the \tpmsign binary.
 While it is likely these concerns could be solved with a strict, immutable SELinux policy and extensive boot measurements,
 we believe IMA-based protections are simpler to understand and add an additional, more dynamic layer of protection.
 
-\subsection{IMA Policy}
+\subsection{IMA Policy and EVM}
 We need IMA to protect the integrity of \tpmsign binary and relevant files.
 Our policy imitates the default \verb|tcb| and \verb|appraise_tcb| policies,
 then we include the following lines:
@@ -415,7 +414,7 @@ At the least, we recommend including the rules of the available default IMA poli
 We use EVM to protect file metadata by utilizing EVM ``portable'' signatures.\footnotemark
 \footnotetext{
   Using non-portable signatures may allow EVM to replace the signature with an HMAC at runtime when EVM HMAC functionality is enabled.
-  We found disabling the HMAC functionality caused issues in our Fedora development environment.
+  Disabling the HMAC functionality causes issues in our Fedora environment.
 }
 This actively prevents modifying metadata: although IMA prevents \emph{the operation} from occuring \emph{if the file is corrupt},
 it does not inherently prevent initial corruption from occuring;
@@ -440,9 +439,9 @@ to \exect since all files with that label require an administrator's signature.
 \subsection{Boot-time and Initramfs Measurements}
 On our Fedora system, we add a custom \texttt{dracut} module with a script that measures the IMA and SELinux policies
 as well as the \systemd init binary on the root filesystem during the \initramfs boot stage.
-We measure \systemd because, on Fedora, \systemd is responsible for loading the custom IMA and SELinux policies when the full system init occurs.\footnotemark
+We measure \systemd because, on Fedora, \systemd is responsible for loading the custom IMA and SELinux policies when the full system \verb|switch_root| occurs.\footnotemark
 \footnotetext{
-  We found loading IMA and SELinux policy during initramfs causes problems on Fedora. 
+  We found loading IMA and SELinux policy earlier causes issues in our Fedora environment. 
   When the initial IMA policies measure \systemd (i.e. \texttt{appraise\_tcb}),
   or when the measurement script loads the policies, measuring \systemd is optional.
 }
@@ -518,7 +517,7 @@ The UEFI puts a measurement of the GRUB bootloader in PCR 4.\footnotemark
 \footnotetext{
   On some out-of-the-box Linux distributions,
   the UEFI measures and executes a Microsoft-signed boot shim, which then measures the real bootloader (e.g. GRUB) \cite{rhboot:2026:shim}.
-  This is an implementation detail to support Secure Boot easily for regular users and does not affect the security of the setup,
+  This is an implementation detail to support Secure Boot easily and does not affect the security of the setup,
   barring flaws in the signed shim.
 }
 GRUB puts measurements of the command line arguments into PCR 8,
@@ -580,7 +579,7 @@ tpm2_createprimary -C o -g sha256 -G aes128cfb -c prim.ctx
 % \end{minted}
 Then we create \pk, whose parent key is the primary key.
 Non-primary keys are randomly generated,
-so this allows us to save \pk and reload it.
+so having a primary key parent allows \pk to be saved and reloaded.
 % \begin{minted}{bash}
 \begin{lstlisting}[style=bash]
 tpm2_create -u key.pub -r key.priv -g sha256 -G 'rsa2048:rsapss:null' -a 'sign|fixedtpm|fixedparent|sensitivedataorigin' -C prim.ctx -c signing.ctx -L policy/authorized.policy
@@ -595,11 +594,12 @@ We also create a PEM format copy of the public key for sharing.
 Our program \tpmsign is the only program allowed to access
 \wcp (\pcrpolicy) by labeling it \exect.
 It attempts to reload \pk from a recent session, which are not valid across reboots.
-If it fails, it will re-generate the primary key and then load \pk from its file.
+If it fails, it will re-generate the primary key and then load \pk from its file.\footnotemark
+\footnotetext{
+  It is possible to make the primary key permanently available in the TPM, if necessary for speed.
+}
 To utilize \pk, it follows the standard steps to verify a wildcard policy to authorize key usage \cite{tpm2-software:2026:policyauthorize}.
 This is necessary for every usage of \pk.
-% TODO : decide the best wording or place for this sentence
-It is alternatively possible to make the primary key permanently stored in the TPM, if necessary for speed.
 
 
 \subsection{LUKS Container}
