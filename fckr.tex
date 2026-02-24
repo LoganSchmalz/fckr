@@ -596,10 +596,9 @@ Our program \tpmsign is the only program allowed to access
 It attempts to reload \pk from a recent session, which are not valid across reboots.
 If it fails, it will re-generate the primary key and then load \pk from its file.\footnotemark
 \footnotetext{
-  It is possible to make the primary key permanently available in the TPM, if necessary for speed.
+  It is possible to make \pk as well as the admin's public key permanently available in the TPM for a minor performance improvement.
 }
-To utilize \pk, it follows the standard steps to verify a wildcard policy to authorize key usage \cite{tpm2-software:2026:policyauthorize}.
-This is necessary for every usage of \pk.
+For every use of \pk, it is necessary to follow the standard steps to verify a wildcard policy to authorize key usage \cite{tpm2-software:2026:policyauthorize}.
 
 
 \subsection{LUKS Container}
@@ -663,13 +662,12 @@ The second limitation is assuming IMA and SELinux protections are not bypassed u
 Against an adversary capable of bypassing SELinux and IMA, installing a rootkit, or otherwise corrupting the kernel at runtime,
 the contents of \wcp can be leaked such that it, and thus \pk, will be persistently available to the adversary until boot PCRs change (e.g. via a system update),
 regardless of the state of SELinux and IMA.
-This also results in the desire for an immutable SELinux policy.
 % ? Attacks in the vein of rootkits disabling SELinux/IMA functionality are demonstrable.
 
 The final limitation is the speed of the TPM.
 A non-virtualized TPM typically takes a few hundred milliseconds to complete the sequence of operations required for signing.
 Thus, the TPM is a limiting factor for environments that would need high-frequency operations.
-The slow speed of the TPM is considered a design feature to limit attack surface area. % ? TODO: cite
+% ? The slow speed of the TPM is considered a design feature to limit attack surface area.
 Alternative hardware security modules or virtualized TPMs may improve on this.
 
 \section{Variations and Alternatives}
