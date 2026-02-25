@@ -411,11 +411,7 @@ Complex policies may be able to provide defense on systems where the SELinux sta
 (although this could make the system more difficult to work with than making SELinux state immutable).
 At the least, we recommend including the rules of the available default IMA policies. % TODO : cite default rules page
 
-We use EVM to protect file metadata by utilizing EVM ``portable'' signatures.\footnotemark
-\footnotetext{
-  Using non-portable signatures may allow EVM to replace the signature with an HMAC at runtime when EVM HMAC functionality is enabled.
-  Disabling the HMAC functionality causes issues in our Fedora environment.
-}
+We use EVM to protect file metadata by utilizing EVM ``portable'' signatures.
 This actively prevents modifying metadata: although IMA prevents \emph{the operation} from occuring \emph{if the file is corrupt},
 it does not inherently prevent initial corruption from occuring;
 when using EVM portable signatures, any modification to the file's \emph{metadata} will be outright prevented.
@@ -439,12 +435,7 @@ to \exect since all files with that label require an administrator's signature.
 \subsection{Boot-time and Initramfs Measurements}
 On our Fedora system, we add a custom \texttt{dracut} module with a script that measures the IMA and SELinux policies
 as well as the \systemd init binary on the root filesystem during the \initramfs boot stage.
-We measure \systemd because, on Fedora, \systemd is responsible for loading the custom IMA and SELinux policies when the full system \verb|switch_root| occurs.\footnotemark
-\footnotetext{
-  We found loading IMA and SELinux policy earlier causes issues in our Fedora environment. 
-  When the initial IMA policies measure \systemd (i.e. \texttt{appraise\_tcb}),
-  or when the measurement script loads the policies, measuring \systemd is optional.
-}
+We measure \systemd because, on Fedora, \systemd is responsible for loading the custom IMA and SELinux policies when the full system \verb|switch_root| occurs.
 The script then attempts to unlock the LUKS container which contains \wcp.
 
 % \begin{minted}{bash}
@@ -513,13 +504,7 @@ Thus, it is not possible for an adversary to falsify the measurements made by th
 \subsubsection{Relevant TPM PCRs}
 We utilize PCR 11 for our measurements of policies.
 Other relevant PCRs are 4, 7, 8, 9, and 14 \cite{UAPILinuxTPMPCR}.
-The UEFI puts a measurement of the GRUB bootloader in PCR 4.\footnotemark
-\footnotetext{
-  On some out-of-the-box Linux distributions,
-  the UEFI measures and executes a Microsoft-signed boot shim, which then measures the real bootloader (e.g. GRUB) \cite{rhboot:2026:shim}.
-  This is an implementation detail to support Secure Boot easily and does not affect the security of the setup,
-  barring flaws in the signed shim.
-}
+The UEFI puts a measurement of the GRUB bootloader in PCR 4.
 GRUB puts measurements of the command line arguments into PCR 8,
 and measurements of the \initramfs and the kernel into PCR 9 \cite{gnu_grub_measured_boot,gentoo_wiki_secure_boot_grub}.
 PCR 7 indicates the general Secure Boot states, including the keys used to verify bootup.
@@ -593,12 +578,10 @@ We also create a PEM format copy of the public key for sharing.
 \subsubsection{Using the Signing Key}
 Our program \tpmsign is the only program allowed to access
 \wcp (\pcrpolicy) by labeling it \exect.
-It attempts to reload \pk from a recent session, which are not valid across reboots.
-If it fails, it will re-generate the primary key and then load \pk from its file.\footnotemark
-\footnotetext{
-  It is possible to make \pk as well as the administrator's public policy key permanently available in the TPM for a minor performance improvement.
-}
-For every use of \pk, it is necessary to follow the standard steps to verify a wildcard policy to authorize key usage \cite{tpm2-software:2026:policyauthorize}.
+It attempts to reload \pk from a transient session,
+and if no valid session exists, it re-generates the primary key and loads \pk from its file.
+\pk and the administrator's public policy key may optionally be placed in the TPM's non-volatile memory to reduce loading overhead.
+After loading, every use of \pk must follow the standard protocol to authorize key usage with the wildcard policy \cite{tpm2-software:2026:policyauthorize}.
 
 
 \subsection{LUKS Container}
@@ -618,6 +601,28 @@ mount /dev/mapper/vault_mapper /mnt/vault
 \end{lstlisting}
 % \end{minted}
 Then \wcp must be placed into the container mount and the EVM signature must be applied.
+
+\subsection{Deployment Considerations}
+There are several distribution-specific details to consider when implementing these mechanisms.
+Firstly, many distributions use a Microsoft-signed boot shim to facilitate Secure Boot support \cite{rhboot:2026:shim}.
+The UEFI measures the shim, and the shim measures the real bootloader (e.g. GRUB).
+This does not affect the security of our framework, as the chain of trust remains intact.
+Alternatively, administrators may manually sign the bootloader or use a Unified Kernel Image (UKI) \cite{gentoo_wiki_secure_boot,gentoo_wiki_secure_boot_grub}.
+
+Secondly, when EVM HMAC support is enabled, EVM may replace non-portable signatures with HMACs,
+allowing file metadata to be modified at runtime (by design).
+Thus, portable signatures are absolutely necessary on systems with HMAC support enabled;
+they are also useful for moving files between systems,
+as non-portable signatures include some system-specific metadata.
+We found that disabling EVM HMAC support prevents Fedora from booting due to its reliance on dynamically-created files.
+
+Finally, on some distributions it should be possible to load the SELinux and IMA policies from the measurement script.
+However, the built-in Fedora SELinux policy is not designed to support loading before \verb|switch_root|,
+and IMA policies containing SELinux labels will fail to load if the SELinux policy is not loaded.
+To ensure the policies are loaded, we measure the \systemd init binary as it is responsible for loading the policies after \verb|switch_root|.
+When the measurement script loads the policies, or when the initial IMA policies
+measure \systemd (i.e. \verb|appraise_tcb|), this is optional.
+
 
 \section{Evaluation}
 We experimentally demonstrated the following features of this setup:
