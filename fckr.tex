@@ -12,7 +12,7 @@
 \usepackage{proof}
 \usepackage{minted}
 \usepackage{listings}
-% \usepackage{color}
+\usepackage{color}
 % \usepackage{amssymb}
 % \usepackage{syntax}
 \usepackage{algorithm}
@@ -33,7 +33,6 @@
 \definecolor{backcolour}{rgb}{0.95,0.95,0.92}
 
 \lstset{
-  upquote=false,
   basicstyle=\ttfamily\footnotesize,
   columns=fullflexible,
   keepspaces=true,
@@ -44,7 +43,6 @@
   showstringspaces=false,
 }
 \lstdefinestyle{bash}{
-  upquote=false,
   prebreak=\mbox{\textbackslash},
   % postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
   language=bash,
@@ -476,6 +474,8 @@ IMA_POLICY="$NEWROOT/etc/ima/ima-policy"
 INIT_SHA=$(sha256sum "$INIT" | cut -d' ' -f1)
 tpm2_pcrextend 11:sha256="$INIT_SHA"
 # ... similar for SELinux, IMA
+HASH=$(printf '\x01' | sha256sum | cut -d' ' -f1)
+tpm2_pcrextend 11:sha256="$HASH"
 
 IMG_PATH="$NEWROOT/home/user/vault.img"
 MAPPER_NAME='vault_mapper'
