@@ -437,34 +437,6 @@ We measure \systemd because, on Fedora, \systemd is responsible for loading the 
 The script then attempts to unlock the LUKS container which contains \wcp.
 
 % \begin{minted}{bash}
-% #!/bin/sh
-% INIT="$NEWROOT/usr/bin/init"
-% SELINUX_POLICY=$(find "$NEWROOT/etc/selinux/targeted/policy" -maxdepth 1 -name 'policy.*' | sort -V | tail -n 1)
-% IMA_POLICY="$NEWROOT/etc/ima/ima-policy"
-
-% INIT_SHA="$(sha256sum "$INIT" | cut -d' ' -f1)"
-% tpm2_pcrextend 11:sha256="$INIT_SHA"
-% # ... similar for SELinux, IMA
-
-% IMG_PATH="$NEWROOT/home/user/vault.img"
-% MAPPER_NAME="vault_mapper"
-% MOUNT_POINT="$NEWROOT/mnt/vault"
-% if [ ! -e "$IMG_PATH" ]; then
-%     exit 1
-% fi
-% if ! systemd-cryptsetup attach "$MAPPER_NAME" "$IMG_PATH" - tpm2-device=auto,keyfile-timeout=0,tries=1,nofail; then
-%     exit 0
-% fi
-% for i in $(seq 1 20); do
-%     [ -b "/dev/mapper/$MAPPER_NAME" ] && break
-%     sleep 0.1
-% done
-% if [ ! -b "/dev/mapper/$MAPPER_NAME" ]; then
-%     exit 0
-% fi
-% mkdir -p "$MOUNT_POINT"
-% mount "/dev/mapper/$MAPPER_NAME" "$MOUNT_POINT" 
-% \end{minted}
 \begin{lstlisting}[style=bash]
 #!/bin/sh
 INIT="$NEWROOT/usr/bin/init"
