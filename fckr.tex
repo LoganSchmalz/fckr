@@ -3,10 +3,11 @@
 \documentclass[sigconf]{acmart}
 % \documentclass{llncs}
 \usepackage[T1]{fontenc}
+\usepackage{pifont}
 % \usepackage{microtype}
 % \usepackage{amsmath}
 % \usepackage{graphicx}
-% \usepackage{booktabs}
+\usepackage{booktabs}
 % \usepackage{tikz-cd}
 % \usepackage{tabularx}
 \usepackage[shortlabels]{enumitem}
@@ -615,16 +616,34 @@ We experimentally demonstrated the following features of this setup:
   \begin{itemize}
     \item Give unapproved programs the \exect label
     \item Corrupt the \tpmsign binary to leak information
-    \item Change the label of \wcp
+    \item Remove the \filet label from \wcp
     \item Corrupt the IMA or SELinux policies
+    \item Access \wcp without \tpmsign
   \end{itemize}
 \end{itemize}
 
-This method is not necessarily safe to attacks that can leak arbitrary program memory, like side-channel attacks.
+\newcommand{\yes}{\textcolor{green}{\ding{52}}} % Checkmark
+\newcommand{\no}{\textcolor{red}{\ding{56}}}   % X mark
+\newcommand{\na}{\textcolor{gray}{N.A.}}   % Minus mark
+
+\begin{table*}[phtb]
+  \begin{tabular}{c c c c c c}
+    \toprule
+    \textbf{Boot State} & \textbf{\wcp Available} & \textbf{\wcp Readable} & \textbf{Modify \wcp} & \textbf{Modify IMA Policy} & \textbf{Modify SELinux Policy} \\
+    \midrule
+    Unapproved          & \no                     & If made available      & If made available    & \no       & \yes                  \\
+    \addlinespace
+    Approved            & \yes                    & By \tpmsign            & \no                  & \no                        & \no                   \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+
+Our framework does not defend against attacks that can leak arbitrary program memory, like side-channel attacks.
 Our \tpmsign binary is short-lived to minimize the surface area for these attacks.
 We can also demonstrate a rootkit that corrupts IMA and/or SELinux behavior, bypassing our protections.
-However, on a well-protected system, especially in a setup where IMA checks kernel modules, it would be very difficult to actually install this rootkit.
-Thus, we believe bypassing our protections on an otherwise uncorrputed kernel has equivalent difficulty to finding at least one zero-day exploit.
+However, on a well-protected system, especially when IMA checks kernel modules, it is very difficult to actually install such rootkits.
+Thus, we believe bypassing our framework on an otherwise uncorrupted, up-to-date kernel has equivalent difficulty to finding at least one zero-day exploit.
 
 Even though the LUKS container strategy should protect \wcp (or a password) sufficiently,
 \wcp including PCRs related to our protection mechanisms provides some extra assurance that if \pk is used, then the system at least booted in a state approved by \wcp.
