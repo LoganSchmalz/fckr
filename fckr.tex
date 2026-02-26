@@ -187,7 +187,7 @@ When used for Secure Boot-enabled firmware, it is used to reliably store boot me
 
 \subsubsection{Recording Boot Measurements}
 A TPM 2.0 for a PC must have at least 24 Platform Configuration Registers (PCRs) \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP}.
-PCRs can store hashes of system integrity measurements or other values through hash extension operations.
+PCRs can store hashes of values through hash extension operations.
 If a PCR has a current hash value $x$, and it is being extended with a new hash $y$,
 the PCR's new value will become $x_{new} = \mathop{hash}(\mathop{concat}(x,y))$.
 By correlating each hash extension to its source,
@@ -196,23 +196,20 @@ For cryptographically secure hash functions like SHA-256,
 it is considered impossible for an adversary to discover $y$ such that $x_{new}$ can lie about previous measurements.
 
 This is the primary mechanism behind Secure Boot and other measured or trusted boot strategies.
-When the system boots, its UEFI takes measurements of system firmware and of the bootloader and stores them in PCRs,
-then the bootloader takes measurements of the kernel and other parts of the operating system and stores them in PCRs as well.
+When the system boots, its UEFI measures the system firmware and the bootloader, 
+and the bootloader measures the kernel and other parts of the operating system.
 Because users lack control during boot,
-these measurements reliably indicate firmware and software integrity.
-Additionally, PCRs 0--15 are non-resettable and persist until reboot.
-Those PCRs are a trustworthy place to store boot measurements during system runtime.
+the measurements reliably indicate firmware and software integrity.
+The measurements remain trustworthy at runtime as they are stored in PCRs 0--15, which are non-resettable and persist until reboot.
 
 \subsubsection{Protecting Keys and Other Secrets}\label{sec:key-protections}
-Most TPM-resident private keys are only usable within the TPM, so such keys will never be available on the operating system.\footnotemark
-\footnotetext{
-  Other secrets (including some keys, if desired) can be stored in the TPM and released to the operating system.
-  We focus on keys that can only be used by the TPM.
-}
+TPM-resident private keys are only usable within the TPM and will never be available on the operating system.
 When they need to be stored elsewhere, i.e. on the filesystem, due to the TPM's limited resources,
 they are encrypted so they can only be used if they are reloaded into the same TPM.
-Loading a key in the TPM merely caches it; authorization checks are still enforced on use,
-and the key may be evicted and reloaded as necessary.
+Loading a key in the TPM merely caches it; authorization checks are still enforced on use.
+The TPM can also store secrets that do get released to the operating system;
+these have the same protection mechanisms available.
+We choose to focus on TPM-resident keys.
 
 It is possible to require specific conditions to be satisfied to use a TPM-resident key.
 This can involve requiring a password, HMAC, a particular set of expected PCR values,
@@ -220,23 +217,20 @@ or a more general "policy" to be satisfied.
 Password- or HMAC-based authorization requires a secret to be known at use time,
 but such secrets have no inherent protection against disclosure.
 Using PCRs effectively limits usage of a key to an administrator-approved boot configuration.
-Policy-based authorization is more advanced.
-
-TPM keys are tied to the password or policy required to use them.
-For passwords-authorized keys, there are methods to change the password;
-the key is then relocated and must be reloaded.
+Keys are tied to their authorization mechanism.
+For password-authorized keys, it is possible to change the password.
 For simple PCR-based authorization,
 there is no mechanism to change the expected PCRs,
 which causes problems across system updates \cite{Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys,Trusted-Computing-Group:2025:TCG-TPM-2.0-Part1-Architecture}.
 
-On the other hand,
-it is possible to change the policy required for a policy-authorized key by using a ``wildcard policy'' or ``authorized policy'' \cite{Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys}.
-Wildcard policies must be signed by an administrator with a private key that is associated with a public key
-which is included as part of the details when setting up the TPM-resident key.
-Policies may also include PCR checks.
-Because wildcard policies can be updated,
-keys can have changeable PCR requirements and remain usable after system updates that modify boot measurements.
-Wildcard policies may also be leveraged to explicitly allow multiple policies to authorize access to a single key,
+Fortunately, policy-based authorization is more advanced.
+Flexible policies can be made via ``wildcard policies'' or ``authorized policies'' \cite{Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys}.
+Wildcard policies must be signed by an administrator with a private key,
+where the corresponding public key is included in the creation details for the TPM-resident key.
+Policies can also include PCR checks.
+Thus, wildcard policies allow keys to have changeable PCR requirements
+and remain usable after system updates that affect boot measurements.
+Wildcard policies may also be leveraged to allow multiple policies to authorize usage of a single key,
 or to utilize the same policy for different keys, including keys on different devices.
 
 \subsection{Security-Enhanced Linux}
