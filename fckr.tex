@@ -1,4 +1,6 @@
-\DocumentMetadata{}\documentclass[sigconf]{acmart}
+\DocumentMetadata{}
+%\documentclass[acmsmall]{acmart}
+\documentclass[sigconf]{acmart}
 % \documentclass{llncs}
 \usepackage[T1]{fontenc}
 % \usepackage{microtype}
@@ -172,12 +174,15 @@ Understanding how these mechanisms work is necessary for our strategy to behave 
 as each involves subtleties that significantly affect system security.
 % TODO: improve flow
 
-\subsection{Trusted Platform Module 2.0}
+\subsection{Trusted Platform Module (TPM) 2.0}
 The TPM 2.0 is widely available on modern x86 systems, 
 either as firmware TPMs (fTPMs) integrated in AMD and Intel platforms or as discrete hardware modules,
 making it a practical target for our work.
 % Thus it is a good target for our work, since it is common and provides a portion of the capabilities we desire for protecting keys.
 The behavior of the TPM is standardized by the Trusted Computing Group (TCG) \cite{Trusted-Computing-Group:2025:TPM-2.0-Library}.
+The TPM serves as a root of trust of storage and root of trust of reporting.
+When used for Secure Boot-enabled firmware, it is used to reliably store boot measurements.
+% ! Not technically a root of trust of measurement, that would be the UEFI
 
 \subsubsection{Recording Boot Measurements}
 A TPM 2.0 for a PC must have at least 24 Platform Configuration Registers (PCRs) \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP}.
@@ -242,8 +247,8 @@ We will use SELinux to protect TPM-related files.
 
 \subsection{Integrity Measurement Architecture (IMA)}
 IMA \cite{Sailer:2004:Integrity-Measurement-Architecture,IBM:IMA-Documentation} primarily measures files and prevents them from being opened or executed if they are changed from an approved state.
-Like SELinux, IMA is widely available by default.
-When IMA is enabled in \fix mode\footnotemark, all files that get matched by the IMA policy get hashes added as extended file-system attributes.
+Like SELinux, IMA is widely available.
+When IMA is enabled in \fix mode, all files that get matched by the IMA policy get hashes added as extended file-system attributes.
 In \appraise mode, IMA prevents protected files from being opened if their contents do not match the associated hash.
 IMA \fix mode can only be enabled when Secure Boot is disabled in the UEFI,
 otherwise \appraise mode is forced.
@@ -268,7 +273,8 @@ EVM can be put into a mode where it uses HMAC to detect any offline filesystem m
 \subsection{LUKS Containers}
 Linux Unified Key Setup (LUKS) containers can be used to encrypt specific files on the filesystem.
 By encrypting the container with a key protected by TPM PCRs,
-it can be used protect secret files when the system might boot in an unapproved state.
+LUKS containers can protect secret files when the system might boot in an unapproved state.
+% ! TODO : clarify how LUKS containers differ from just encrypting the files
 
 \subsection{Limitations of Available Mechanisms}
 As key protections were discussed in \zcref[S]{sec:key-protections},
@@ -298,8 +304,6 @@ If \wcp is unprotected, the PCRs will indicate such, so \pk will not be usable.
 If an adversary reboots the system into an unapproved state, \wcp is encrypted inside the LUKS container and cannot be accessed.
 Thus, for an adversary to access \wcp, they must exploit the running system to figure out how to disable the IMA or SELinux policies,
 or otherwise find an exploit to read \wcp from memory or from the filesystem bypassing protections.
-
-Our development system uses Fedora 42 with an out-of-the-box kernel.
 
 \subsection{SELinux Policy}
 % policy_module(tpm_sign, 1.0.0)
@@ -409,9 +413,9 @@ At the least, we recommend including the rules of the available default IMA poli
 We use EVM to protect file metadata by utilizing EVM ``portable'' signatures.
 This actively prevents modifying metadata: although IMA prevents \emph{the operation} from occuring \emph{if the file is corrupt},
 it does not inherently prevent initial corruption from occuring;
-when using EVM portable signatures, any modification to the file's \emph{metadata} will be outright prevented.
+when using EVM portable signatures, any modification to the file's \emph{metadata} will be prevented.
 % TODO: allow anyone to delete file? for the purposes of updating
-In fact, this occurs regardless of whether the file is matched in the IMA policy.
+This occurs regardless of whether the file matches a rule in the IMA policy.
 This makes it impossible to change the SELinux labels, file owners, or UNIX permissions on the file.
 
 Below is an example to sign a file with an EVM portable signature via \verb|evmctl| \cite{IBM:IMA-utilities-evmctl}.
@@ -428,9 +432,8 @@ The IMA policy rules above effectively prevent an adversary from relabeling a ma
 to \exect since all files with that label require an administrator's signature.
 
 \subsection{Boot-time and Initramfs Measurements}
-On our Fedora system, we add a custom \texttt{dracut} module with a script that measures the IMA and SELinux policies
-as well as the \systemd init binary on the root filesystem during the \initramfs boot stage.
-We measure \systemd because, on Fedora, \systemd is responsible for loading the custom IMA and SELinux policies when the full system \verb|switch_root| occurs.
+We add a script to \initramfs that measures the IMA and SELinux policies
+as well as the \systemd init binary on the root filesystem during the boot stage.
 The script then attempts to unlock the LUKS container which contains \wcp.
 
 % \begin{minted}{bash}
@@ -467,10 +470,10 @@ mount "/dev/mapper/$MAPPER_NAME" "$MOUNT_POINT"
 \end{lstlisting}
 
 Since this script is installed in \initramfs,
-removal of the script or other unapproved modifications of the \initramfs will be reflected in a PCR.
-Thus, it is not possible for an adversary to falsify the measurements made by this script (or its absence).
+removal of the script or other unapproved modifications of \initramfs will be reflected in a PCR.
+Thus, it is not possible for an adversary to falsify the measurements made by this script. % ! (or its absence).
 
-\subsubsection{Relevant TPM PCRs}
+% ? \subsubsection{Relevant TPM PCRs}
 We utilize PCR 11 for our measurements of policies.
 Other relevant PCRs are 4, 7, 8, 9, and 14 \cite{UAPILinuxTPMPCR}.
 The UEFI puts a measurement of the GRUB bootloader in PCR 4.
@@ -478,8 +481,6 @@ GRUB puts measurements of the command line arguments into PCR 8,
 and measurements of the \initramfs and the kernel into PCR 9 \cite{gnu_grub_measured_boot,gentoo_wiki_secure_boot_grub}.
 PCR 7 indicates the general Secure Boot states, including the keys used to verify bootup.
 PCR 14 includes measurements of Machine Owner Keys, including those necessary for loading custom IMA policies.
-
-While the usage of PCRs 0--7 is defined by TCG standards, usage of PCRs 8--15 may vary for other boot setups \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP,UAPILinuxTPMPCR}.
 
 \subsection{TPM Key Setup}
 After rebooting the system with our \initramfs changes,
@@ -572,13 +573,18 @@ mount /dev/mapper/vault_mapper /mnt/vault
 Then \wcp must be placed into the container mount and the EVM signature must be applied.
 
 \subsection{Deployment Considerations}
-There are several distribution-specific details to consider when implementing these mechanisms.
+Our development system uses Fedora 42 with an out-of-the-box kernel.
+This influenced some of our design decisions which may need to be modified for other distributions.
+
 Firstly, many distributions use a Microsoft-signed boot shim to facilitate Secure Boot support \cite{rhboot:2026:shim}.
 The UEFI measures the shim, and the shim measures the real bootloader (e.g. GRUB).
 This does not affect the security of our framework, as the chain of trust remains intact.
 Alternatively, administrators may manually sign the bootloader or use a Unified Kernel Image (UKI) \cite{gentoo_wiki_secure_boot,gentoo_wiki_secure_boot_grub}.
 
-Secondly, when EVM HMAC support is enabled, EVM may replace non-portable signatures with HMACs,
+Further, while PCR 11 is unused and available on Fedora when using the GRUB bootloader, only the usage of PCRs 0--7 is defined by TCG standards.
+Usage of PCRs 8--15 may vary for other boot setups \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP,UAPILinuxTPMPCR}.
+
+When EVM HMAC support is enabled, EVM may replace non-portable signatures with HMACs,
 allowing file metadata to be modified at runtime (by design).
 Thus, portable signatures are absolutely necessary on systems with HMAC support enabled;
 they are also useful for moving files between systems,
@@ -586,7 +592,7 @@ as non-portable signatures include some system-specific metadata.
 We found that disabling EVM HMAC support prevents Fedora from booting due to its reliance on dynamically-created files.
 
 Finally, on some distributions it should be possible to load the SELinux and IMA policies from the measurement script.
-However, the built-in Fedora SELinux policy is not designed to support loading before \verb|switch_root|,
+However, Fedora's built-in SELinux policy is not designed to support loading before \verb|switch_root|,
 and IMA policies containing SELinux labels will fail to load if the SELinux policy is not loaded.
 To ensure the policies are loaded, we measure the \systemd init binary as it is responsible for loading the policies after \verb|switch_root|.
 When the measurement script loads the policies, or when the initial IMA policies
