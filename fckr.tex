@@ -245,14 +245,11 @@ IMA \cite{Sailer:2004:Integrity-Measurement-Architecture,IBM:IMA-Documentation} 
 Like SELinux, IMA is widely available by default.
 When IMA is enabled in \fix mode\footnotemark, all files that get matched by the IMA policy get hashes added as extended file-system attributes.
 In \appraise mode, IMA prevents protected files from being opened if their contents do not match the associated hash.
+IMA \fix mode can only be enabled when Secure Boot is disabled in the UEFI,
+otherwise \appraise mode is forced.
 The IMA policy can include various specifications such as file owners, the active user, and whether files are being opened for reading or execution.
 The first custom IMA policy that is loaded overwrites any default policies.
 Afterwards, the custom IMA policy cannot be overwritten, only appended to.
-
-\footnotetext{
-  IMA \fix mode can only be enabled when Secure Boot is disabled in the UEFI.
-  When Secure Boot is enabled, \appraise mode is forced if IMA is enabled.
-}
 
 \subsubsection{Signing Files}
 It is also possible to use signatures instead of hashes to detect corruption of files.
