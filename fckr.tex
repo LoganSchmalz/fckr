@@ -211,9 +211,9 @@ The TPM can also store secrets that do get released to the operating system;
 these have the same protection mechanisms available.
 We choose to focus on TPM-resident keys.
 
-It is possible to require specific conditions to be satisfied to use a TPM-resident key.
-This can involve requiring a password, HMAC, a particular set of expected PCR values,
-or a more general "policy" to be satisfied.
+TPM-resident keys support conditional usage,
+including requiring a password, HMAC, a particular set of expected PCR values,
+or a more general ``policy'' to be satisfied.
 Password- or HMAC-based authorization requires a secret to be known at use time,
 but such secrets have no inherent protection against disclosure.
 Using PCRs effectively limits usage of a key to an administrator-approved boot configuration.
