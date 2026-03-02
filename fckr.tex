@@ -383,8 +383,7 @@ setsebool -P secure_mode_policyload on
 % \end{minted}
 This makes changing policy or changing SELinux to permissive mode impossible at runtime,
 and disabling this for approved changes becomes slightly more complex.
-However, we acknowledge this may not always be possible.
-In that case, deeper investigation into protecting the system via IMA is probably necessary, and unfortunately highly system-specific.
+If this is not possible, a more complex IMA policy may provide some protection.
 
 Since SELinux policy is often considered frustrating to work with,
 we attempted to minimize our reliance on SELinux.
