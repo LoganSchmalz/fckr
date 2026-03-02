@@ -269,7 +269,10 @@ EVM can be put into a mode where it uses HMAC to detect any offline filesystem m
 Linux Unified Key Setup (LUKS) containers can be used to encrypt specific files on the filesystem.
 By encrypting the container with a key protected by TPM PCRs,
 LUKS containers can protect secret files when the system might boot in an unapproved state.
-% ! TODO : clarify how LUKS containers differ from just encrypting the files
+Compared to encrypting the contents of files manually, LUKS encryption is managed in the kernel
+and file contents are automatically decrypted when accessed. % TODO : cite ?
+Whether a LUKS container or a manual encryption process is used, an encryption key must be kept in memory.
+Thus, we choose to rely on the widespread LUKS mechanisms, and additionally benefit from its ease of use.
 
 \subsection{Limitations of Available Mechanisms}
 As key protections were discussed in \zcref[S]{sec:key-protections},
