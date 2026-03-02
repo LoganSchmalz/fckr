@@ -251,7 +251,6 @@ The IMA policy can include various specifications such as file owners, the activ
 The first custom IMA policy that is loaded overwrites any default policies.
 Afterwards, the custom IMA policy cannot be overwritten, only appended to.
 
-\subsubsection{Signing Files}
 It is also possible to use signatures instead of hashes to detect corruption of files.
 This allows for more dynamicity in the system, as switching IMA from \appraise to \fix mode requires a system reboot, and
 allowing hashes to be overwritten at runtime is unsafe, as an adversary may know the expected value.
@@ -260,10 +259,21 @@ In contrast, signatures can be updated safely in \appraise mode because the admi
 By default, some distributions require any custom IMA policies and public keys that get loaded to be signed by an administrator.
 This involves adding a key certificate to the UEFI Machine Owner Keys, then signing IMA policies and X.509 keys on the filesystem with the appropriate private key.
 
-\subsubsection{Extended Verification Module (EVM)}
-EVM protects file meta\-data, such as the permissions and SELinux label.
-This is valuable to ensure an adversary cannot simply adjust file metadata to bypass SELinux or IMA protections.
-EVM can be put into a mode where it uses HMAC to detect any offline filesystem modifications, or a mode where it uses signatures to prevent runtime modifications as well.
+\subsection{Extended Verification Module (EVM)}
+\label{sec:evm}
+% TODO: what to cite here? https://lwn.net/Articles/393673/ ima-docs?
+EVM is a similar integrity mechanism to IMA, but protects file meta\-data, such as the permissions and SELinux label.
+This prevents adversaries from simply adjusting file metadata to bypass SELinux or IMA protections.
+EVM can use HMAC to detect any offline filesystem modifications, or use signatures to detect runtime modifications.
+Both can be enabled at once.
+EVM HMACs and signatures are verified when a file matches an IMA appraisal rule.
+
+``Portable'' EVM signatures exclude system-specific metadata and 
+actively prevent modifying metadata: although IMA prevents \emph{the operation} from occuring \emph{if the file is corrupt},
+it does not inherently prevent initial corruption from occuring;
+when using EVM portable signatures, any modification to the file's \emph{metadata} will be prevented.
+When both HMACs and signatures are enabled, EVM may replace non-portable signatures with HMACs upon metadata changes.
+% TODO : consider simplifying this paragraph
 
 \subsection{LUKS Containers}
 Linux Unified Key Setup (LUKS) containers can be used to encrypt specific files on the filesystem.
@@ -387,7 +397,7 @@ the \tpmsign binary.
 While it is likely these concerns could be solved with a strict, immutable SELinux policy and extensive boot measurements,
 we believe IMA-based protections are simpler to understand and add an additional, more dynamic layer of protection.
 
-\subsection{IMA Policy and EVM}
+\subsection{IMA Policy}
 We need IMA to protect the integrity of \tpmsign binary and relevant files.
 Our policy imitates the default \verb|tcb| and \verb|appraise_tcb| policies,
 then we include the following lines:
@@ -401,33 +411,14 @@ Using \verb|appraise_type=imasig| makes signatures required for these files,
 which is stronger than only requiring hashes.
 It is also then possible to modify the files without rebooting the system and get an administrator's signature to correct IMA's expected value.
 This can make it easier to update relevant files if necessary.
+The first rule effectively prevents an adversary from relabeling a malicious binary to \exect,
+since all files with that label require an administrator's signature.
 
 The flexibility of IMA policy configuration should make it possible to cover any desired subset of the filesystem
 and ensure the desired level of integrity.
 Complex policies may be able to provide defense on systems where the SELinux state cannot be immutable
 (although this could make the system more difficult to work with than making SELinux state immutable).
 At the least, we recommend including the rules of the available default IMA policies. % TODO : cite default rules page
-
-We use EVM to protect file metadata by utilizing EVM ``portable'' signatures.
-This actively prevents modifying metadata: although IMA prevents \emph{the operation} from occuring \emph{if the file is corrupt},
-it does not inherently prevent initial corruption from occuring;
-when using EVM portable signatures, any modification to the file's \emph{metadata} will be prevented.
-% TODO: allow anyone to delete file? for the purposes of updating
-This occurs regardless of whether the file matches a rule in the IMA policy.
-This makes it impossible to change the SELinux labels, file owners, or UNIX permissions on the file.
-
-Below is an example to sign a file with an EVM portable signature via \verb|evmctl| \cite{IBM:IMA-utilities-evmctl}.
-In a high-security environment, the private key should be held on a separate machine
-and the signature should be assigned manually to the file via \verb|setfattr|.
-% \begin{minted}{bash}
-\begin{lstlisting}[style=bash]
-evmctl sign --imasig --portable file -k key.priv
-\end{lstlisting}
-% \end{minted}
-
-Using an EVM signature on \wcp prevents an adversary from changing its SELinux label.
-The IMA policy rules above effectively prevent an adversary from relabeling a malicious binary
-to \exect since all files with that label require an administrator's signature.
 
 \subsection{Boot-time and Initramfs Measurements}
 We add a script to \initramfs that measures the IMA and SELinux policies
@@ -551,6 +542,20 @@ and if no valid session exists, it re-generates the primary key and loads \pk fr
 \pk and the administrator's public policy key may optionally be placed in the TPM's non-volatile memory to reduce loading overhead.
 After loading, every use of \pk must follow the standard protocol to authorize key usage with the wildcard policy \cite{tpm2-software:2026:policyauthorize}.
 
+\subsection{Using EVM on \wcp}
+After giving \wcp the \filet label,
+we use a portable EVM signature to protect it.
+We apply the EVM portable signature (and also an IMA signature) to \wcp via \verb|evmctl| \cite{IBM:IMA-utilities-evmctl}.
+% \begin{minted}{bash}
+\begin{lstlisting}[style=bash]
+evmctl sign --imasig --portable pcr.policy_desired -k key.priv
+\end{lstlisting}
+% \end{minted}
+This makes it impossible to change the SELinux labels, file owners, or UNIX permissions of \wcp.
+In a real environment, the private key should be held on a separate machine
+and the signature should be assigned manually to the file via \verb|setfattr|.
+
+
 
 \subsection{LUKS Container}
 % TODO : maybe cite something here?
@@ -568,7 +573,7 @@ mkdir -p /mnt/vault/
 mount /dev/mapper/vault_mapper /mnt/vault
 \end{lstlisting}
 % \end{minted}
-Then \wcp must be placed into the container mount and the EVM signature must be applied.
+Then \wcp must be placed into the container mount.
 
 \subsection{Deployment Considerations}
 Our development system uses Fedora 42 with an out-of-the-box kernel.
@@ -582,16 +587,14 @@ Alternatively, administrators may manually sign the bootloader or use a Unified 
 Further, while PCR 11 is unused and available on Fedora when using the GRUB bootloader, only the usage of PCRs 0--7 is defined by TCG standards.
 Usage of PCRs 8--15 may vary for other boot setups \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP,UAPILinuxTPMPCR}.
 
-When EVM HMAC support is enabled, EVM may replace non-portable signatures with HMACs,
-allowing file metadata to be modified at runtime (by design).
-Thus, portable signatures are absolutely necessary on systems with HMAC support enabled;
-they are also useful for moving files between systems,
-as non-portable signatures include some system-specific metadata.
-We found that disabling EVM HMAC support prevents Fedora from booting due to its reliance on dynamically-created files.
+Fedora comes out of the box with EVM HMAC support enabled.
+We found that disabling EVM HMAC support prevents Fedora from booting due to its reliance on some dynamically-modified files.
+As mentioned in \zcref[S]{sec:evm}, this means EVM may replace non-portable signatures with HMACs, allowing metadata to be modified.
+In this case, \textbf{portable} signatures are absolutely necessary.
 
 Finally, on some distributions it should be possible to load the SELinux and IMA policies from the measurement script.
 However, Fedora's built-in SELinux policy is not designed to support loading before \verb|switch_root|,
-and IMA policies containing SELinux labels will fail to load if the SELinux policy is not loaded.
+and IMA policies containing SELinux labels will fail to load if the SELinux policy is not loaded beforehand.
 To ensure the policies are loaded, we measure the \systemd init binary as it is responsible for loading the policies after \verb|switch_root|.
 When the measurement script loads the policies, or when the initial IMA policies
 measure \systemd (i.e. \verb|appraise_tcb|), this is optional.
