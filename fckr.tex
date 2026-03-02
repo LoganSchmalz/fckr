@@ -492,7 +492,7 @@ openssl rsa -in policy_key_private.pem -out policy_key.pem -pubout
 % \end{minted}
 
 The public portion of the key must be loaded in the TPM that holds \pk.
-The TPM will create a "wildcard policy digest" so \pk can require a wildcard policy.
+The TPM will create a ``wildcard policy digest'' so \pk can require a wildcard policy.
 The important file being created here is \verb|authorized.policy|.
 % \begin{minted}{bash}
 \begin{lstlisting}[style=bash]
