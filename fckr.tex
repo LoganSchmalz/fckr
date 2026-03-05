@@ -315,9 +315,29 @@ When the system is booted into an unapproved state, \wcp is encrypted inside the
 Thus, for an adversary to access \wcp, they must exploit the running system to figure out how to bypass the IMA or SELinux policies,
 or otherwise find an exploit to read \wcp from memory.
 
-\begin{figure*}
+\begin{figure}
 \include{trust_diagram}
-\end{figure*}
+\caption{An illustration of our framework. 
+IMA, SELinux, and EVM protect \tpmsign and \wcp.
+Measurements of those mechanisms are put into TPM PCRs during boot.
+The PCRs must be in the approved state to unlock the LUKS container to access \wcp,
+and also for \tpmsign to use \wcp to access \pk.
+}
+\Description[Illustration of framework.]{
+  The image is an illustration of the components of the framework.
+  The components are the TPM, its PCRs, and the signing key;
+  the kernel security mechanisms: IMA, SELinux, and EVM;
+  the wildcard policy; the LUKS container containing the wildcard policy;
+  and the tpm_sign program that can access the wildcard policy.
+  Green arrows point from IMA and SELinux to tpm_sign, indicating IMA and SELinux protect tpm_sign.
+  Green arrows point from SELinux and EVM to the wildcard policy, indicating SELinux and EVM protect tpm_sign.
+  A blue arrow points from all the kernel security mechanisms into the TPM PCRs, indicating the security mechanisms are measured into the PCRs.
+  The LUKS container is represented by an orange wrapper around the wildcard policy.
+  A blue arrow points from the PCRs to the orange LUKS container, indicating the PCRs are necessary to unlock the LUKS container to access the wildcard policy.
+  A dashed blue arrow points from the PCRs to the wildcard policy, indicating the PCRs must still be in an approved state when using the wildcard policy to access the key.
+  A double red arrow points from the wildcard policy to the key, going through tpm_sign, indicating that the tpm_sign program uses the wildcard policy as the authorization value to access the key.
+}
+\end{figure}
 
 \subsection{SELinux Policy}
 % policy_module(tpm_sign, 1.0.0)
@@ -631,6 +651,7 @@ We experimentally demonstrated the following features of this setup:
 \newcommand{\no}{\textcolor{red}{\ding{56}}}   % X mark
 \newcommand{\na}{\textcolor{gray}{N.A.}}   % Minus mark
 
+\begin{comment}
 \begin{table*}[phtb]
   \begin{tabular}{c c c c c c}
     \toprule
@@ -642,6 +663,7 @@ We experimentally demonstrated the following features of this setup:
     \bottomrule
   \end{tabular}
 \end{table*}
+\end{comment}
 
 
 Our framework does not defend against attacks that can leak arbitrary program memory, like side-channel attacks.

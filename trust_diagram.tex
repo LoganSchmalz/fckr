@@ -1,62 +1,46 @@
 \usetikzlibrary{positioning, shapes.symbols, shapes.geometric, arrows.meta, calc, fit, backgrounds, shadows, matrix}
 
 \begin{tikzpicture}[
-    required_by/.style={->,thick,NavyBlue},
+    required_by/.style={->,thick,DeepSkyBlue},
     protects/.style={->,thick,ForestGreen},
     box/.style={drop shadow, fill=white}
 ]
 
 \node (TPM) at (0,0) {TPM\strut};
-\node [anchor=north east] (PCRs) at (TPM.south) {PCRs\strut};
-\path let \p1 = ($(PCRs.east)-(PCRs.west)$), \n1 = {\x1 - \pgflinewidth}in
-    node [anchor=north west, minimum width=\n1] (Key) at (TPM.south) {\pk\strut};
-% \node [anchor=north west, text width=width("PCRs"), align=center] (Key) at (TPM.south) {\pk\strut};
-\node [draw, dashed, fit=(PCRs) (Key), inner sep=0 pt] (box) {};
-\draw [dashed] (box.north) -- (box.south);
-
+\node [below left=0 and 0.1 of TPM.south, anchor=north east, draw, dashed] (PCRs) {PCRs\strut};
+\node [below right=0 and 0.1 of TPM.south, anchor=north west, text width=width("PCRs"), align=center, draw, dashed] (Key) {\pk\strut};
 \begin{scope}[on background layer]
-\node[draw, box, fill=lightgray, solid, thick, inner sep=0pt, fit=(TPM) (PCRs) (Key)] (TPMbg) {};
+    \node[draw, box, fill=lightgray, solid, thick, fit=(TPM) (PCRs) (Key)] (TPMbg) {};
 \end{scope}
 
 \matrix (m) [
     matrix of nodes,
-    nodes={draw, box, text width=width("SELinux"), align=flush center}, % Set a uniform width here
-    row sep=0.025cm,
-    below left=1.25 and 0.8875 of PCRs,
-  ] {
+    nodes={draw, box, text width=width("SELinux"), align=flush center},
+    row sep=0.1cm,
+] at (-2,-3) {
     |(IMA)| IMA\strut \\
     |(SELinux)| SELinux\strut \\
     |(EVM)| EVM\strut \\
   };
+\node [draw, gray, dashed, thick, inner sep=9pt, fit=(m),
+        label={[gray, anchor=north west]north west:Kernel}] (Kernel) {};
 
-% \node [below left=2 and 1 of PCRs] (SELinux) [draw] {SELinux\strut};
-% \path let \p1 = ($(SELinux.east)-(SELinux.west)$), \n1 = {\x1 - \pgflinewidth} in
-%     node [above=(.025) of SELinux, minimum width=\n1] (IMA) [draw] {IMA\strut}
-%     node [below=(.025) of SELinux, minimum width=\n1] (EVM) [draw] {EVM\strut};
-% \node [above=(.025) of SELinux, text width=width("SELinux"), align=center] (IMA2) [draw] {IMA\strut};
-% \node [below=(.025) of SELinux, text width=width("SELinux"), align=center] (EVM2) [draw] {EVM\strut};
-% \node [draw, gray, dashed, thick, inner sep=14pt, fit=(SELinux) (IMA) (EVM),
-%         label={[gray, anchor=north west]north west:Kernel\strut}] (Kernel) {};
-\node [draw, gray, dashed, thick, inner sep=10pt, fit=(m),
-        label={[gray, anchor=north west]north west:Kernel\strut}] (Kernel) {};
-\node [box, below right=3 and 1 of Key] (WCP) [draw] {\wcp\strut};
-\node [draw, DarkOrange, dashed, thick, fit=(WCP), inner sep=14pt,
-        label={[DarkOrange, anchor=south east]south east:LUKS\strut}] (LUKS) {};
-\node [box, above=1 of WCP] (tpm_sign) [draw] {\tpmsign\strut};
+\node [box] (WCP) at (2.25,-3.7) [draw] {\wcp\strut};
+\node [draw, DarkOrange, dashed, thick, fit=(WCP), inner sep=13pt,
+        label={[DarkOrange, anchor=south east]south east:LUKS}] (LUKS) {};
+\node [box, above=0.9 of WCP] (tpm_sign) [draw] {\tpmsign\strut};
 
-% Adding green arrows
-% \draw[->, thick, green] (Kernel) -- (PCRs);
-% \draw[required_by] (WCP) -- (Key);
 \draw[required_by] (Kernel) |- (PCRs);
 \draw[required_by, dashed] (PCRs) -- (WCP);
 \draw[required_by] (PCRs) -- (LUKS);
+
 \draw[protects] (EVM) -- (WCP);
 \draw[protects] (SELinux) -- (WCP);
+\draw[protects] (SELinux) -- (tpm_sign);
+\draw[protects] (IMA) -- (tpm_sign);
+
 
 \draw[-, thick, double, Crimson] (WCP) -- (tpm_sign);
 \draw[-{Stealth}, thick, double, Crimson] (tpm_sign) |- (Key);
-
-\draw[protects] (SELinux) -- (tpm_sign);
-\draw[protects] (IMA) -- (tpm_sign);
 
 \end{tikzpicture}
