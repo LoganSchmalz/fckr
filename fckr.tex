@@ -314,6 +314,7 @@ Futhermore, \wcp is stored within a LUKS container which automatically unlocks d
 When the system is booted into an unapproved state, \wcp is encrypted inside the LUKS container and cannot be accessed.
 Thus, for an adversary to access \wcp, they must exploit the running system to figure out how to bypass the IMA or SELinux policies,
 or otherwise find an exploit to read \wcp from memory.
+\zcref[S]{fig:framework} visually illustrates our framework.
 
 \begin{figure}
 \include{trust_diagram}
@@ -337,6 +338,7 @@ and also for \tpmsign to use \wcp to access \pk.
   A dashed blue arrow points from the PCRs to the wildcard policy, indicating the PCRs must still be in an approved state when using the wildcard policy to access the key.
   A double red arrow points from the wildcard policy to the key, going through tpm_sign, indicating that the tpm_sign program uses the wildcard policy as the authorization value to access the key.
 }
+\label{fig:framework}
 \end{figure}
 
 \subsection{SELinux Policy}
