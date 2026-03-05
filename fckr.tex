@@ -8,6 +8,7 @@
 % \usepackage{amsmath}
 % \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{tikz}
 % \usepackage{tikz-cd}
 % \usepackage{tabularx}
 \usepackage[shortlabels]{enumitem}
@@ -16,6 +17,7 @@
 \usepackage{minted}
 \usepackage{listings}
 \usepackage{color}
+\usepackage[svgnames]{xcolor}
 % \usepackage{amssymb}
 % \usepackage{syntax}
 \usepackage{algorithm}
@@ -101,6 +103,7 @@
 \newcommand{\initramfs}{\texttt{initramfs}\xspace}
 
 \begin{document}
+\xspaceaddexceptions{\strut}
 
 \begin{abstract}
 Modern security relies heavily on public key cryptography,
@@ -295,23 +298,26 @@ However, the TPM trusts the operating system to control localities, and there is
 % While IMA is powerful,
 % complex policy configurations can place systems into states that prevent successful boot without reverting to \fix mode.
 
-\section{Implementation}
-In our implementation, access to the TPM key \pk is restricted to a single program, which we denote \tpmsign,
+\section{Framework}
+In our framework, access to a TPM key \pk is restricted to a single program, which we denote \tpmsign,
 since the key is used for generating signatures.
-Enforcement of this restriction is handled by SELinux policy.
-IMA is used to protect the integrity of \tpmsign, as well as any binaries permitted to invoke it.
-EVM protects the SELinux labels on \tpmsign and related files, preventing metadata tampering.
-Additionally, SELinux policy restricts relabeling of these files to and from the \tpmsign-specific labels.
-These protections are strongest when the SELinux policy is designated immutable,
-preventing runtime policy modification by an adversary.
+SELinux enforces this restriction by protecting \tpmsign and a wildcard policy \wcp.
+IMA protects the integrity of \tpmsign, as well as any binaries permitted to invoke it.
+EVM and SELinux protect the SELinux labels on \tpmsign and \wcp.
+%These protections are strongest when the SELinux policy is designated immutable,
+%preventing runtime policy modification by an adversary.
 
-\tpmsign utilizes wildcard policy \wcp which is the secret to access \pk.
-\wcp as the secret requires the PCRs to indicate the system booted in a state where \wcp is protected by SELinux and IMA.
+The wildcard policy \wcp is the secret used to access \pk.
+\wcp requires the PCRs to indicate the system booted with the described mechanisms.
 If \wcp is unprotected, the PCRs will indicate such, so \pk will not be usable.
-\wcp is stored within a LUKS container which automatically unlocks during boot if the boot process is executing as expected.
-If an adversary reboots the system into an unapproved state, \wcp is encrypted inside the LUKS container and cannot be accessed.
-Thus, for an adversary to access \wcp, they must exploit the running system to figure out how to disable the IMA or SELinux policies,
-or otherwise find an exploit to read \wcp from memory or from the filesystem bypassing protections.
+Futhermore, \wcp is stored within a LUKS container which automatically unlocks during boot if the boot process executes as expected.
+When the system is booted into an unapproved state, \wcp is encrypted inside the LUKS container and cannot be accessed.
+Thus, for an adversary to access \wcp, they must exploit the running system to figure out how to bypass the IMA or SELinux policies,
+or otherwise find an exploit to read \wcp from memory.
+
+\begin{figure*}
+\include{trust_diagram}
+\end{figure*}
 
 \subsection{SELinux Policy}
 % policy_module(tpm_sign, 1.0.0)
