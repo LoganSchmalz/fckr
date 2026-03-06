@@ -282,11 +282,11 @@ When both HMACs and signatures are enabled, EVM may replace non-portable signatu
 
 \subsection{Linux Unified Key Setup (LUKS) Containers}
 LUKS containers are encrypted filesystem images, protected with a password or TPM PCRs.
-Thus, LUKS containers can protect secret files when the system might boot in an unapproved state.
-Compared to manual encryption and decryption of file contents, the kernel manages LUKS containers
+Thus, LUKS containers can protect files when the system might boot in an unapproved state.
+Compared to manual decryption of files, the kernel manages LUKS containers
 and files are only decrypted in memory when accessed; % TODO : cite ?
 LUKS containers also retain file metadata.
-Whether a LUKS container or a manual encryption process is used, a decryption key must be kept in memory.
+Whether a LUKS container or a manual process is used, a decryption key must be kept in memory. % ? remove this sentence
 Thus, we favor the widespread, easy-to-use LUKS mechanisms.
 
 \subsection{Limitations of Available Mechanisms}
