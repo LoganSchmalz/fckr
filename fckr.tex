@@ -102,6 +102,8 @@
 \newcommand{\fix}{\texttt{fix}\xspace}
 \newcommand{\initramfs}{\texttt{initramfs}\xspace}
 
+\newcommand{\hash}[1]{\mathop{hash}(#1)}
+
 \begin{document}
 \xspaceaddexceptions{\strut}
 
@@ -192,7 +194,7 @@ When used for Secure Boot-enabled firmware, it is used to reliably store boot me
 A TPM 2.0 for a PC must have at least 24 Platform Configuration Registers (PCRs) \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP}.
 PCRs can store hashes of values through hash extension operations.
 If a PCR has a current hash value $x$, and it is being extended with a new hash $y$,
-the PCR's new value will become $x_{new} = \mathop{hash}(\mathop{concat}(x,y))$.
+the PCR's new value will become $x_{new} = \hash{\mathop{concat}(x,y)}$.
 By correlating each hash extension to its source,
 successfully reconstructing a PCR value demonstrates integrity of the recorded measurements.
 For cryptographically secure hash functions like SHA-256, 
@@ -463,7 +465,7 @@ IMA_POLICY="$NEWROOT/etc/ima/ima-policy"
 INIT_SHA=$(sha256sum "$INIT" | cut -d' ' -f1)
 tpm2_pcrextend 11:sha256="$INIT_SHA"
 # ... similar for SELinux, IMA
-HASH=$(printf '\x01' | sha256sum | cut -d' ' -f1)
+HASH=$(printf 'done' | sha256sum | cut -d' ' -f1)
 tpm2_pcrextend 11:sha256="$HASH"
 
 IMG_PATH="$NEWROOT/home/user/vault.img"
@@ -491,13 +493,41 @@ removal of the script or other unapproved modifications of \initramfs will be re
 Thus, it is not possible for an adversary to falsify the measurements made by this script. % ! (or its absence).
 
 % ? \subsubsection{Relevant TPM PCRs}
-We utilize PCR 11 for our measurements of policies.
+We store our measurements in PCR 11.
 Other relevant PCRs are 4, 7, 8, 9, and 14 \cite{UAPILinuxTPMPCR}.
-The UEFI puts a measurement of the GRUB bootloader in PCR 4.
-GRUB puts measurements of the command line arguments into PCR 8,
-and measurements of the \initramfs and the kernel into PCR 9 \cite{gnu_grub_measured_boot,gentoo_wiki_secure_boot_grub}.
-PCR 7 indicates the general Secure Boot states, including the keys used to verify bootup.
-PCR 14 includes measurements of Machine Owner Keys, including those necessary for loading custom IMA policies.
+The UEFI measures the GRUB bootloader into PCR 4.
+GRUB measures the command line arguments into PCR 8,
+and \initramfs and the kernel into PCR 9 \cite{gnu_grub_measured_boot,gentoo_wiki_secure_boot_grub}.
+PCR 7 contains the general Secure Boot state, including the keys used to verify bootup.
+PCR 14 contains measurements of Machine Owner Keys, including those necessary for loading custom IMA policies.
+These measurements are reflected in \zcref[S]{tab:pcr-usage}.
+
+\begin{table}
+  \caption{PCR usage at start-up}
+  \label{tab:pcr-usage}
+  % \footnotesize
+  \begin{tabular}{ccl}
+    \toprule
+    Actor & PCR & Value \\
+    \midrule
+    UEFI & 4 & $\hash{\mbox{shim}}$$^\dagger$ \\
+    UEFI & 7 & $\hash{\mbox{{Secure Boot configuration}}}$ \\
+    shim & 4 & $\hash{\mbox{GRUB}}$ \\
+    shim & 7 & $\hash{\mbox{shim certificate database}}$ \\
+    \addlinespace
+    GRUB & 8 & $\hash{\mbox{kernel command line args}}$ \\
+    GRUB & 9 & $\hash{\mbox{\initramfs}}$ \\
+    GRUB & 9 & $\hash{\mbox{kernel}}$ \\
+    \addlinespace
+    Script & 11 & $\hash{\mbox{\systemd}}$ \\
+    Script & 11 & $\hash{\mbox{SELinux policy}}$ \\
+    Script & 11 & $\hash{\mbox{IMA policy}}$ \\
+    Script & 11 & $\hash{\mbox{\texttt{`done'}}}$ \\
+    \bottomrule
+  \end{tabular}
+  \\
+  $^\dagger$ See \zcref[S]{sec:implementation-details}.
+\end{table}
 
 \subsection{TPM Key Setup}
 After rebooting the system with our \initramfs changes,
@@ -603,12 +633,13 @@ mount /dev/mapper/vault_mapper /mnt/vault
 % \end{minted}
 Then \wcp must be placed into the container mount.
 
-\subsection{Deployment Considerations}
+\subsection{Deployment Considerations}\label{sec:implementation-details}
 Our development system uses Fedora 42 with an out-of-the-box kernel.
 This influenced some of our design decisions which may need to be modified for other distributions.
 
 Firstly, many distributions use a Microsoft-signed boot shim to facilitate Secure Boot support \cite{rhboot:2026:shim}.
-The UEFI measures the shim, and the shim measures the real bootloader (e.g. GRUB).
+The shim contains its own certificate database to check signatures, so
+the UEFI measures the shim, and the shim measures the real bootloader (e.g. GRUB).
 This does not affect the security of our framework, as the chain of trust remains intact.
 Alternatively, administrators may manually sign the bootloader or use a Unified Kernel Image (UKI) \cite{gentoo_wiki_secure_boot,gentoo_wiki_secure_boot_grub}.
 
