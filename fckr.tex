@@ -278,14 +278,14 @@ when using EVM portable signatures, any modification to the file's \emph{metadat
 When both HMACs and signatures are enabled, EVM may replace non-portable signatures with HMACs upon metadata changes.
 % TODO : consider simplifying this paragraph
 
-\subsection{LUKS Containers}
-Linux Unified Key Setup (LUKS) containers can be used to encrypt specific files on the filesystem.
-By encrypting the container with a key protected by TPM PCRs,
-LUKS containers can protect secret files when the system might boot in an unapproved state.
-Compared to encrypting the contents of files manually, LUKS encryption is managed in the kernel
-and file contents are automatically decrypted when accessed. % TODO : cite ?
-Whether a LUKS container or a manual encryption process is used, an encryption key must be kept in memory.
-Thus, we choose to rely on the widespread LUKS mechanisms, and additionally benefit from its ease of use.
+\subsection{Linux Unified Key Setup (LUKS) Containers}
+LUKS containers are encrypted filesystem images, protected with a password or TPM PCRs.
+Thus, LUKS containers can protect secret files when the system might boot in an unapproved state.
+Compared to manual encryption and decryption of file contents, the kernel manages LUKS containers
+and files are only decrypted in memory when accessed; % TODO : cite ?
+LUKS containers also retain file metadata.
+Whether a LUKS container or a manual encryption process is used, a decryption key must be kept in memory.
+Thus, we favor the widespread, easy-to-use LUKS mechanisms.
 
 \subsection{Limitations of Available Mechanisms}
 As key protections were discussed in \zcref[S]{sec:key-protections},
