@@ -108,18 +108,18 @@
 \xspaceaddexceptions{\strut}
 
 \begin{abstract}
-Modern security relies heavily on public key cryptography,
-and it is necessary to protect private keys, and secrets in general, from attackers.
-While multiple mechanisms exist to prevent secrets from being trivially read off the filesystem,
-against a highly-capable adversary it is ideal to store secrets outside of main memory.
-The TPM 2.0 is built into modern x86 hardware and is designed to be used for exactly this.
-However, a lack of tight integration between the TPM and the operating system makes it difficult to protect secrets with high availability needs from arbitrary access.
-% fails to protect keys stored in the TPM 2.0 from being used by arbitrary users, other than by fully restricting access to the TPM.
-Using only existing infrastructure: SELinux, IMA, and LUKS containers,
-we develop a stronger protection mechanism for TPM-stored secrets so access can be restricted to a specific program or user,
-without limiting access to the TPM in general.
+  Modern security relies heavily on public key cryptography,
+  and it is necessary to protect private keys, and secrets in general, from attackers.
+  While multiple mechanisms exist to prevent secrets from being trivially read off the filesystem,
+  against a highly-capable adversary it is ideal to store secrets outside of main memory.
+  The TPM 2.0 is built into modern x86 hardware and is designed to be used for exactly this.
+  However, a lack of tight integration between the TPM and the operating system makes it difficult to protect secrets with high availability needs from arbitrary access.
+  % fails to protect keys stored in the TPM 2.0 from being used by arbitrary users, other than by fully restricting access to the TPM.
+  Using only existing infrastructure: SELinux, IMA, and LUKS containers,
+  we develop a stronger protection mechanism for TPM-stored secrets so access can be restricted to a specific program or user,
+  without limiting access to the TPM in general.
 
-% \keywords{First keyword  \and Second keyword \and Another keyword.}
+  % \keywords{First keyword  \and Second keyword \and Another keyword.}
 \end{abstract}
 
 \maketitle              % typeset the header of the contribution
@@ -149,7 +149,7 @@ This raises a critical question: how can secrets such as private keys be protect
 % Protecting private keys gainst root-level attackers remains an open-challenge.
 % So how do we protect secrets like private keys from root-level attackers?
 
-One approach is to store secrets outside the main memory, 
+One approach is to store secrets outside the main memory,
 and never expose them to user-space or even kernel-space.
 The Trusted Platform Module 2.0 (TPM 2.0) is designed to do exactly this.
 It provides a hardware-backed root of trust for storage of private keys and other secrets,
@@ -181,7 +181,7 @@ as each involves subtleties that significantly affect system security.
 % TODO: improve flow
 
 \subsection{Trusted Platform Module (TPM) 2.0}
-The TPM 2.0 is widely available on modern x86 systems, 
+The TPM 2.0 is widely available on modern x86 systems,
 either as firmware TPMs (fTPMs) integrated in AMD and Intel platforms or as discrete hardware modules,
 making it a practical target for our work.
 % Thus it is a good target for our work, since it is common and provides a portion of the capabilities we desire for protecting keys.
@@ -197,11 +197,11 @@ If a PCR has a current hash value $x$, and it is being extended with a new hash 
 the PCR's new value will become $x_{new} = \hash{\mathop{concat}(x,y)}$.
 By correlating each hash extension to its source,
 successfully reconstructing a PCR value demonstrates integrity of the recorded measurements.
-For cryptographically secure hash functions like SHA-256, 
+For cryptographically secure hash functions like SHA-256,
 it is considered impossible for an adversary to discover $y$ such that $x_{new}$ can lie about previous measurements.
 
 This is the primary mechanism behind Secure Boot and other measured or trusted boot strategies.
-When the system boots, its UEFI measures the system firmware and the bootloader, 
+When the system boots, its UEFI measures the system firmware and the bootloader,
 and the bootloader measures the kernel and other parts of the operating system.
 Because users lack control during boot,
 the measurements reliably indicate firmware and software integrity.
@@ -273,7 +273,7 @@ EVM can use HMAC to detect any offline filesystem modifications, or use signatur
 both can be enabled at once.
 EVM HMACs and signatures are verified when a file matches an IMA appraisal rule.
 
-``Portable'' EVM signatures exclude system-specific metadata and 
+``Portable'' EVM signatures exclude system-specific metadata and
 actively prevent modifying metadata: although IMA prevents \emph{the operation} from occuring \emph{if the file is corrupt},
 it does not inherently prevent initial corruption from occuring;
 when using EVM portable signatures, any modification to the file's \emph{metadata} will be prevented.
@@ -319,29 +319,29 @@ or otherwise find an exploit to read \wcp from memory.
 \zcref[S]{fig:framework} visually illustrates our framework.
 
 \begin{figure}
-\include{trust_diagram}
-\setlength{\abovecaptionskip}{-20pt}
-\caption{An illustration of our framework. 
-IMA, SELinux, and EVM protect \tpmsign and \wcp.
-Measurements of those mechanisms are put into TPM PCRs during boot.
-The PCRs must be in the approved state to unlock the LUKS container to access \wcp,
-and also for \tpmsign to use \wcp to access \pk.
-}
-\Description[Illustration of framework.]{
-  The image is an illustration of the components of the framework.
-  The components are the TPM, its PCRs, and the signing key;
-  the kernel security mechanisms: IMA, SELinux, and EVM;
-  the wildcard policy; the LUKS container containing the wildcard policy;
-  and the tpm_sign program that can access the wildcard policy.
-  Green arrows point from IMA and SELinux to tpm_sign, indicating IMA and SELinux protect tpm_sign.
-  Green arrows point from SELinux and EVM to the wildcard policy, indicating SELinux and EVM protect tpm_sign.
-  A blue arrow points from all the kernel security mechanisms into the TPM PCRs, indicating the security mechanisms are measured into the PCRs.
-  The LUKS container is represented by an orange wrapper around the wildcard policy.
-  A blue arrow points from the PCRs to the orange LUKS container, indicating the PCRs are necessary to unlock the LUKS container to access the wildcard policy.
-  A dashed blue arrow points from the PCRs to the wildcard policy, indicating the PCRs must still be in an approved state when using the wildcard policy to access the key.
-  A double red arrow points from the wildcard policy to the key, going through tpm_sign, indicating that the tpm_sign program uses the wildcard policy as the authorization value to access the key.
-}
-\label{fig:framework}
+  \include{trust_diagram}
+  \setlength{\abovecaptionskip}{-20pt}
+  \caption{An illustration of our framework.
+    IMA, SELinux, and EVM protect \tpmsign and \wcp.
+    Measurements of those mechanisms are put into TPM PCRs during boot.
+    The PCRs must be in the approved state to unlock the LUKS container to access \wcp,
+    and also for \tpmsign to use \wcp to access \pk.
+  }
+  \Description[Illustration of framework.]{
+    The image is an illustration of the components of the framework.
+    The components are the TPM, its PCRs, and the signing key;
+    the kernel security mechanisms: IMA, SELinux, and EVM;
+    the wildcard policy; the LUKS container containing the wildcard policy;
+    and the tpm_sign program that can access the wildcard policy.
+    Green arrows point from IMA and SELinux to tpm_sign, indicating IMA and SELinux protect tpm_sign.
+    Green arrows point from SELinux and EVM to the wildcard policy, indicating SELinux and EVM protect tpm_sign.
+    A blue arrow points from all the kernel security mechanisms into the TPM PCRs, indicating the security mechanisms are measured into the PCRs.
+    The LUKS container is represented by an orange wrapper around the wildcard policy.
+    A blue arrow points from the PCRs to the orange LUKS container, indicating the PCRs are necessary to unlock the LUKS container to access the wildcard policy.
+    A dashed blue arrow points from the PCRs to the wildcard policy, indicating the PCRs must still be in an approved state when using the wildcard policy to access the key.
+    A double red arrow points from the wildcard policy to the key, going through tpm_sign, indicating that the tpm_sign program uses the wildcard policy as the authorization value to access the key.
+  }
+  \label{fig:framework}
 \end{figure}
 
 \subsection{SELinux Policy}
@@ -508,21 +508,21 @@ These measurements are reflected in \zcref[S]{tab:pcr-usage}.
   % \footnotesize
   \begin{tabular}{ccl}
     \toprule
-    Actor & PCR & Value \\
+    Actor  & PCR & Value                                       \\
     \midrule
-    UEFI & 4 & $\hash{\mbox{shim}}$$^\dagger$ \\
-    UEFI & 7 & $\hash{\mbox{{Secure Boot configuration}}}$ \\
-    shim & 4 & $\hash{\mbox{GRUB}}$ \\
-    shim & 7 & $\hash{\mbox{shim certificate database}}$ \\
-    \addlinespace
-    GRUB & 8 & $\hash{\mbox{kernel command line args}}$ \\
-    GRUB & 9 & $\hash{\mbox{\initramfs}}$ \\
-    GRUB & 9 & $\hash{\mbox{kernel}}$ \\
-    \addlinespace
-    Script & 11 & $\hash{\mbox{\systemd}}$ \\
-    Script & 11 & $\hash{\mbox{SELinux policy}}$ \\
-    Script & 11 & $\hash{\mbox{IMA policy}}$ \\
-    Script & 11 & $\hash{\mbox{\texttt{`done'}}}$ \\
+    UEFI   & 4   & $\hash{\mbox{shim}}$$^\dagger$              \\
+    UEFI   & 7   & $\hash{\mbox{{Secure Boot configuration}}}$ \\
+    shim   & 4   & $\hash{\mbox{GRUB}}$                        \\
+    shim   & 7   & $\hash{\mbox{shim certificate database}}$   \\
+      \addlinespace
+    GRUB   & 8   & $\hash{\mbox{kernel command line args}}$    \\
+    GRUB   & 9   & $\hash{\mbox{\initramfs}}$                  \\
+    GRUB   & 9   & $\hash{\mbox{kernel}}$                      \\
+      \addlinespace
+    Script & 11  & $\hash{\mbox{\systemd}}$                    \\
+    Script & 11  & $\hash{\mbox{SELinux policy}}$              \\
+    Script & 11  & $\hash{\mbox{IMA policy}}$                  \\
+    Script & 11  & $\hash{\mbox{\texttt{`done'}}}$             \\
     \bottomrule
   \end{tabular}
   \\
@@ -664,21 +664,21 @@ We experimentally demonstrated the following features of this setup:
 \begin{itemize}
   \item Changing the \initramfs, kernel, IMA policy, SELinux policy, and other items measured into PCRs results in an unapproved boot state.
   \item When the system is booted in an unapproved state:
-  \begin{itemize}
-    \item The LUKS container will not open without a password, and \wcp will not be available.
-    Thus, \wcp cannot be relabelled either.
-    \item If somehow the container is unlocked and \wcp is available, the PCRs specified in \wcp will not match and \pk will not be usable.
-    Thus, the contents of \wcp must be maintained until the system is rebooted to an approved state.
-    \item It is not possible to corrupt the IMA policy, because IMA policies require a signature.
-  \end{itemize}
+        \begin{itemize}
+          \item The LUKS container will not open without a password, and \wcp will not be available.
+                Thus, \wcp cannot be relabelled either.
+          \item If somehow the container is unlocked and \wcp is available, the PCRs specified in \wcp will not match and \pk will not be usable.
+                Thus, the contents of \wcp must be maintained until the system is rebooted to an approved state.
+          \item It is not possible to corrupt the IMA policy, because IMA policies require a signature.
+        \end{itemize}
   \item When the system is booted in an approved state (IMA and SELinux working as intended), it is not possible to:
-  \begin{itemize}
-    \item Give unapproved programs the \exect label
-    \item Corrupt the \tpmsign binary to leak information
-    \item Remove the \filet label from \wcp
-    \item Corrupt the IMA or SELinux policies
-    \item Access \wcp without \tpmsign
-  \end{itemize}
+        \begin{itemize}
+          \item Give unapproved programs the \exect label
+          \item Corrupt the \tpmsign binary to leak information
+          \item Remove the \filet label from \wcp
+          \item Corrupt the IMA or SELinux policies
+          \item Access \wcp without \tpmsign
+        \end{itemize}
 \end{itemize}
 
 \newcommand{\yes}{\textcolor{green}{\ding{52}}} % Checkmark
@@ -691,9 +691,9 @@ We experimentally demonstrated the following features of this setup:
     \toprule
     \textbf{Boot State} & \textbf{\wcp Available} & \textbf{\wcp Readable} & \textbf{Modify \wcp} & \textbf{Modify IMA Policy} & \textbf{Modify SELinux Policy} \\
     \midrule
-    Unapproved          & \no                     & If made available      & If made available    & \no       & \yes                  \\
+    Unapproved          & \no                     & If made available      & If made available    & \no                        & \yes                           \\
     \addlinespace
-    Approved            & \yes                    & By \tpmsign            & \no                  & \no                        & \no                   \\
+    Approved            & \yes                    & By \tpmsign            & \no                  & \no                        & \no                            \\
     \bottomrule
   \end{tabular}
 \end{table*}
