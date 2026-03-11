@@ -131,7 +131,7 @@
 Public key cryptography is a key component of modern security, and is now ubiquitous: most Internet communication is encrypted and authenticated.  % signed ?
 However, this security relies on the assumption that private keys are kept secret.
 In small-scale, personal settings, users can reasonably trust one another to protect their keys.
-In contrast, large-scale systems such as TLS-enabled web servers handle thousands of requests per second, and the security of their keys depends entirely on machine configuration and automated processes.
+In contrast, large-scale systems such as web servers handle thousands of requests per second, and the security of their keys depends entirely on machine configuration and automated processes.
 In such settings, keys must be both highly availabe and strongly protected.
 % When the data being transmitted is emails, and the correspondents have met in real life,
 % it is easy to trust that the other person is conscientious of the security of their key.
@@ -156,19 +156,20 @@ It provides a hardware-backed root of trust for storage of private keys and othe
 and supports authorization mechanisms such as passwords to access them.
 However, these mechanisms do not integrate tightly with operating system concepts such as users or programs.
 Authorization can either be satisfied by any program on the machine or requires manual user input.
-For high-availability services such as TLS, manual authorization is infeasible,
-and there is no built-in TPM mechanism that meaningfully restricts key usage to a specific user or program in the presence of a root-level adversary.
+For high-availability services, manual authorization is infeasible,
+and the TPM has no built-in mechanism that meaningfully restricts key usage to a specific user or program.
 
-At the same time, the TPM supports measured and trusted boot through firmware and boot measurements recorded in Platform Configuration Registers (PCRs).
-These mechanisms are commonly used to establish system integrity, for example as part of Secure Boot.
-By leveraging these measurements, it is possble to ensure that Security-Enhanced Linux (SELinux) and the Linux Integrity Measurement Architecture (IMA)
+At the same time, the Unified Extensible Firmware Interface (UEFI), the standard firmware platform for computers,
+uses the TPM for Secure Boot to establish firmware and software integrity.
+With this, it is possible to ensure that Security-Enhanced Linux (SELinux) and the Linux Integrity Measurement Architecture (IMA)
 are enabled with an approved configuration.
-These kernel-level mechanisms can then be used to enforce fine-grained access control over TPM-resident resources.
+Alongside the Extended Verification Module (EVM) and Linux Unified Key Setup (LUKS) containers,
+these kernel-level mechanisms can be used to enforce fine-grained access control over TPM-resident secrets.
 
-In this paper, we demonstrate how existing infrastructure---SELinux, IMA, and LUKS containers---can be combined with
+In this work, we demonstrate how these existing security mechanisms can be combined along with
 TPM policy authorization to restrict access to TPM-resident secrets to specific programs or users,
 without globally restricting access to the TPM.
-We describe the required SELinux and IMA policies, boot-time measurements, and TPM configuration necessary to achieve this.
+We describe the required SELinux, IMA, and EVM configurations, boot-time measurements, LUKS setup, and TPM configuration necessary to achieve this.
 Finally, we discuss limitations of current TPM integration and note that deeper kernel support for features such as TPM localities or resettable PCRs could enable stronger future designs.
 % The SELinux and IMA policies, the assisting boot-time setup and measurements,
 % and the TPM configuration necessary to accomplish this are the key contributions of our work.
