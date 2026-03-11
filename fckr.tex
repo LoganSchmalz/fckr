@@ -392,9 +392,9 @@ Note that the second \verb|typeattributeset| (for the last deny rule) should be 
 if only specific programs should be able to launch \tpmsign.
 
 We remove the last deny rule and utilize the following rules in our development environment,
-which must be strictly adjusted for real-world systems.
-The key adjustments are which types that can transition to \domaint.
-Additionally, we allow the \domaint domain to be unconfined since we trust our \tpmsign program,
+which must be strictly adjusted for real-world systems,
+the key adjustments being which types can transition to \domaint.
+We allow the \domaint domain to be unconfined since we trust our \tpmsign program,
 but further restricting its permissions is reasonable.
 % \begin{minted}{text}
 \begin{lstlisting}
