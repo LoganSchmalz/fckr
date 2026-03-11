@@ -471,19 +471,12 @@ tpm2_pcrextend 11:sha256="$HASH"
 IMG_PATH="$NEWROOT/home/user/vault.img"
 MAPPER_NAME='vault_mapper'
 MOUNT_POINT="$NEWROOT/mnt/vault"
-if [ ! -e "$IMG_PATH" ]; then
-    exit 1
-fi
-if ! systemd-cryptsetup attach "$MAPPER_NAME" "$IMG_PATH" - tpm2-device=auto,keyfile-timeout=0,tries=1,nofail; then
-    exit 0
-fi
-for i in $(seq 1 20); do
-    [ -b "/dev/mapper/$MAPPER_NAME" ] && break
-    sleep 0.1
-done
-if [ ! -b "/dev/mapper/$MAPPER_NAME" ]; then
-    exit 0
-fi
+
+mokutil --sb-state | grep -q 'enabled' || exit 0
+test -e "$IMG_PATH" || exit 0
+systemd-cryptsetup attach "$MAPPER_NAME" "$IMG_PATH" - tpm2-device=auto,keyfile-timeout=0,tries=1,nofail || exit 0
+udevadm settle -E "/dev/mapper/$MAPPER_NAME" -t 2 || exit 0
+
 mkdir -p "$MOUNT_POINT"
 mount "/dev/mapper/$MAPPER_NAME" "$MOUNT_POINT" 
 \end{lstlisting}
