@@ -637,7 +637,7 @@ Firstly, many distributions use a Microsoft-signed boot shim to facilitate Secur
 The shim contains its own certificate database to check signatures, so
 the UEFI measures the shim, and the shim measures the real bootloader (e.g. GRUB).
 This does not affect the security of our framework, as the chain of trust remains intact.
-Alternatively, administrators may manually sign the bootloader or use a Unified Kernel Image (UKI) \cite{gentoo_wiki_secure_boot,gentoo_wiki_secure_boot_grub}.
+Alternatively, administrators may manually sign the bootloader or use a unified kernel image (UKI) \cite{gentoo_wiki_secure_boot,gentoo_wiki_secure_boot_grub}.
 
 Further, while PCR 11 is unused and available on Fedora when using the GRUB bootloader, only the usage of PCRs 0--7 is defined by TCG standards.
 Usage of PCRs 8--15 may vary for other boot setups \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP,UAPILinuxTPMPCR}.
@@ -725,23 +725,31 @@ Thus, the TPM is a limiting factor for environments that would need high-frequen
 % ? The slow speed of the TPM is considered a design feature to limit attack surface area.
 Alternative hardware security modules or virtualized TPMs may improve on this.
 
-\section{Variations and Alternatives}
-Reprovisioning \wcp for every boot may be viable by requiring a check for the boot-count, a feature supported by TPM policies.
-Alternatively, reprovisioning \pk on every approved boot may be feasible in some environments, checking via a TPM quote to verify PCRs.
-These would restrict runtime leaks to one boot cycle, however they would complicate policy or key management respectively, especially for remote parties.
+\section{Variations and Future Work}
+The design of our framework allows for several adjustments to address specific concerns.
 
-Trusted Execution Environments may provide strong memory-based protections,
-potentially sufficient to justify storing \wcp or \pk directly in memory,
-but are not always available on non-enterprise hardware.
+We considered two relatively straightforward modifications to our implementation.
+First, using a unified kernel image could reduce boot and measurement complexity.
+Second, writing a minimal, bespoke kernel module to protect \wcp would avoid the need for intricate SELinux and IMA policies and the associated administrative overhead.
+Each change would reduce the trusted computing base by reducing the amount of configuration that needs to be verified.
 
-A bespoke kernel module protecting \wcp may be an alternative to developing complex SELinux and IMA policies, and
-a unified kernel image could reduce boot and measurement complexity.
+If there is serious concern about authenticity across boot cycles, two additional key management strategies are feasible.
+Policies can require a check to the boot-count, so \wcp could be reprovisioned on every boot.
+Alternatively, \pk could be reprovisioned on every boot, but this would require remote parties to verify the PCRs to ensure \pk is properly protected
+(and TPM-resident, if that is still desired).
+These options restrict runtime leaks to a single boot cycle, at the cost of increased complexity in policy or key management respectively.
 
-We particularly believe implementing support for TPM localities on Linux and SELinux (or equivalent) to
-restrict access of TPM localities to certain programs would be a strong step forward.
-In this scenario, leaking the contents of \wcp would not make \pk available to an adversary when the SELinux policy is still running,
-since only \tpmsign would be able to access the appropriate locality.
-However, adversaries capable of corrupting the kernel would still be able to work around this.
+While other hardware security modules with similar functionality to the TPM exist, they are not widely available.
+Trusted execution environments (TEEs) are, however, commonly available on enterprise hardware,
+and provide strong memory-based protections.
+TEEs may provide sufficient isolation to justify storing \wcp or \pk directly in protected memory,
+potentially improving performance.
+
+Implementing support for TPM localities on Linux and SELinux (or equivalent) would be a significant step toward hardening our framework.
+By restricting access to TPM localities to certain programs, 
+\pk could require a locality accessible only by \tpmsign, making \pk's use independent of the secrecy of \wcp.
+However, adversaries capable of corrupting the kernel/SELinux would still be able to work around this.
+This is our ideal way forward.
 
 
 
