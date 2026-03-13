@@ -780,14 +780,14 @@ allow files_unconfined_type file_type:file { exec_file_perms manage_file_perms m
 We found ourselves concerned with
 \verb|exec_file_perms|, which is a macro that includes \verb|open| and \verb|read|.
 and with \verb|relabel_file_perms|, which includes \verb|relabelfrom| and \verb|relabelto|.
-In Fedora's \verb|targeted| policy specifically, unconfined contexts are also able to transition to any domain type. % TODO: improve
+In Fedora's \verb|targeted| policy specifically, unconfined contexts are also able to transition to any domain type and inspect the memory of any program. % TODO: improve
 By parsing through these definitions in the Reference Policy, it is possible to recreate them while excluding undesirable permissions.
 
 The second important detail to note is the implementation of deny rules in the SELinux Common Intermediate Language.
-Deny rules are capable of overriding existing policy, however they are not available in the standard SELinux syntax.
+Deny rules are capable of overriding existing policy, however they are not available in the high-level SELinux syntax.
 Since deny rules are very explicit, they can compensate for pre-existing SELinux policy modules which leave unintended security holes.
 Thus, they are a suitable alternative to the above process of manually recreating simple things which could be based on existing macros.
-For example, our to recreate our policy while making denials explicit:
+For example, to recreate our policy while making denials explicit:
 \begin{lstlisting}
 (deny domain tpm_sign_exec_t (file (relabelto)))
 (deny domain tpm_sign_file_t (file (relabelfrom)))
