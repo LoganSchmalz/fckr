@@ -540,7 +540,7 @@ openssl rsa -in policy_key_private.pem -out policy_key.pem -pubout
 % \end{minted}
 
 The public portion of the key must be loaded in the TPM that holds \pk.
-The TPM will create a ``wildcard policy digest'' so \pk can require a wildcard policy.
+We create a ``wildcard policy digest'' so \pk can require a wildcard policy authenticated by the administrator's public key.
 The important file being created here is \verb|authorized.policy|.
 % \begin{minted}{bash}
 \begin{lstlisting}[style=bash]
@@ -556,7 +556,7 @@ The file \pcrpolicy is \wcp.
 Our commands create the policy on our development machine,
 but that is primarily to easily collect the PCR values.
 It should be possible to create the policy on another machine when the PCR values are known.
-This is the step that must be repeated to update \wcp after system updates.
+To update \wcp (e.g. after system updates), this is the step that must be repeated.
 % \begin{minted}{bash}
 \begin{lstlisting}[style=bash]
 tpm2_pcrread -opcrs.sha256 sha256:7,8,9,11,14
@@ -586,7 +586,7 @@ rm prim.ctx signing.ctx
 \end{lstlisting}
 % \end{minted}
 The important files here are \verb|key.pub| and \verb|key.priv|, the public and private portions of \pk.
-We also create a PEM format copy of the public key for sharing.
+We also create a PEM-formatted copy of the public key for sharing.
 
 \subsubsection{Using the Signing Key}
 Our program \tpmsign is the only program allowed to access
@@ -642,8 +642,7 @@ Alternatively, administrators may manually sign the bootloader or use a Unified 
 Further, while PCR 11 is unused and available on Fedora when using the GRUB bootloader, only the usage of PCRs 0--7 is defined by TCG standards.
 Usage of PCRs 8--15 may vary for other boot setups \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP,UAPILinuxTPMPCR}.
 
-Fedora comes out of the box with EVM HMAC support enabled.
-We found that disabling EVM HMAC support prevents Fedora from booting due to its reliance on some dynamically-modified files.
+We found that attempting to run EVM without HMAC support prevents Fedora from booting due to its reliance on some dynamically-modified files.
 As mentioned in \zcref[S]{sec:evm}, this means EVM may replace non-portable signatures with HMACs, allowing metadata to be modified.
 In this case, \textbf{portable} signatures are absolutely necessary.
 
