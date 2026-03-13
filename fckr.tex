@@ -801,5 +801,29 @@ via logical expressions like \verb|not|, \verb|and|, \verb|or|, etc.
 This is because, in CIL policy, rules (\verb|allow|, \verb|deny|, etc.) must take an identifier in the first and second arguments.
 In our policy, this allows us to deny reads from every domain except \domaint.
 
+\section{Setting up IMA}
+Setting up IMA is a complicated process on Fedora.
+To ensure trustworthiness of the installed IMA policy and signatures, there are some setup steps that go beyond ``put a file in a place''.
+We recommend at least reading the sections starting from ``IMA CA Key and Certificate'' to ``Sign and Install a Custom Policy'' at \cite{IBM:IMA-utilities-evmctl} to gather the basics.
+
+On Fedora, dracut is the tool used to build \initramfs.
+Dracut has a standard module for loading IMA/EVM keys and enabling IMA/EVM during boot named \verb|integrity|.
+It is necessary to remove the \verb|ima-policy-load.sh| script from this module, since Fedora's SELinux policy is not designed to load during boot and our IMA policy relies on the SELinux policy.
+The \verb|integrity| module loads IMA keys from \verb|/etc/keys/ima/| as described in \cite{IBM:IMA-utilities-evmctl}.
+Before that, it loads the EVM keys from \verb|/etc/keys/evm/|;
+thus, another key with a similar setup (or the same key as generated for IMA in the ``IMA Signing Key and Certificate'' section) must also be placed there to serve as the EVM signature verification key.
+
+As discussed briefly in \zcref{sec:implementation-details}, it seems best on Fedora to enable EVM HMACs as well.
+This requires creating a kernel masterkey (we make a trusted masterkey since we are using a TPM) and making a child encrypted EVM HMAC key.
+\begin{lstlisting}[style=bash]
+tpm2_createprimary --key-algorithm=rsa2048 --key-context=key.ctxt
+tpm2_evictcontrol -c key.ctxt 0x81000001
+KMK=$(keyctl add trusted kmk-trusted "new 32 keyhandle=0x81000001" @u)
+keyctl pipe $KMK > /etc/keys/kmk-trusted.blob
+EVM=$(keyctl add encrypted evm-key "new trusted:kmk-trusted 64" @u)
+keyctl pipe $EVM > /etc/keys/evm-trusted.blob
+\end{lstlisting}
+% TODO : cite? https://web.archive.org/web/20250709141759/https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/managing_monitoring_and_updating_the_kernel/enhancing-security-with-the-kernel-integrity-subsystem_managing-monitoring-and-updating-the-kernel#working-with-trusted-keys_enhancing-security-with-the-kernel-integrity-subsystem
+
 
 \end{document}
