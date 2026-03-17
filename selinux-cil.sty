@@ -1,0 +1,44 @@
+\lstdefinelanguage{selinux-cil}{
+    % Class 1: Declarations
+    morekeywords={
+        allow, allowx, auditallow, auditallowx, block, blockabstract,
+        boolean, booleanif, category, categoryalias, categoryaliasactual,
+        categoryorder, categoryset, class, classcommon, classmap,
+        classmapping, classorder, classpermission, classpermissionset,
+        common, context, defaultrange, defaultrole, defaulttype, defaultuser,
+        dontaudit, dontauditx, optional, policycap, role, roleattribute,
+        roleattributeset, rolebounds, sensitivity, sensitivityalias,
+        sensitivityaliasactual, sensitivitycategory, sensitivityorder,
+        sid, sidcontext, sidorder, type, typealias, typealiasactual,
+        typeattribute, typeattributeset, typebounds, typepermissive,
+        typeneveraudit, user, userattribute, userattributeset, userbounds,
+        userlevel, userprefix, userrange, userrole, unordered,
+        deny
+    },
+    % Class 2: Actions/Functions/Transitions
+    morekeywords=[2]{
+        blockinherit, call, in, macro, typetransition, typemember, 
+        typechange, roletransition, rangetransition, roleallow,
+        mlsconstrain, mlsvalidatetrans, validatetrans, constrain
+    },
+    % Class 3: Logic/Operators
+    morekeywords=[3]{
+        and, or, not, xor, eq, neq, dom, domby, incomp, range
+    },
+    % Class 4: Identifiers/Magic Values
+    morekeywords=[4]{
+        true, false, self, notself, all, object_r, other,
+        u1, u2, u3, r1, r2, r3, t1, t2, t3, l1, l2, h1, h2
+    },
+    % Class 5: Labeling/Contexts
+    morekeywords=[5]{
+        filecon, fsuse, genfscon, ibendportcon, ibpkeycon, 
+        iomemcon, ioportcon, netifcon, nodecon, pcidevicecon, 
+        pirqcon, portcon, devicetreecon, tunabelif, ipaddr, level, levelrange
+    },
+    sensitive=true,
+    morecomment=[l]{;},
+    morestring=[b]",
+    % Support for parentheses as delimiters/brackets
+    % moredelims=[is][\color{black}]{|}{|}, 
+}[keywords, comments, strings]

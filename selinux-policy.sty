@@ -1,0 +1,43 @@
+
+\lstdefinelanguage{selinux-policy}{
+    % Class 1: Declarations
+    morekeywords={
+        allow, auditallow, auditdeny, dontaudit, neverallow,
+        allowxperm, auditallowxperm, dontauditxperm, neverallowxperm,
+        type, typealias, typeattribute, typebounds, attribute, 
+        bool, tunable, alias, module, require, optional, 
+        policycap, permissive, neveraudit, class, common, 
+        sid, role, roles, roleattribute, attribute_role, 
+        sensitivity, dominance, category, level, range, user,
+        default_user, default_role, default_type, default_range,
+        expandattribute, types
+    },
+    % Class 2: Actions/Transitions
+    morekeywords=[2]{
+        type_transition, type_member, type_change, role_transition, 
+        range_transition, inherits, mlsconstrain, mlsvalidatetrans,
+        validatetrans, constrain, role_allow
+    },
+    % Class 3: Logic/Operators
+    morekeywords=[3]{
+        and, or, not, xor, eq, dom, domby, incomp, 
+        SOURCE, TARGET, SAMEUSER
+    },
+    % Class 4: Identifiers/Magic Values
+    morekeywords=[4]{
+        true, false, self, all, asterisk, tilde,
+        u1, u2, u3, r1, r2, r3, t1, t2, t3, l1, l2, h1, h2,
+        low, high, low-high, glblub, object_r, CTRUE, CFALSE
+    },
+    % Class 5: Labeling/Contexts
+    morekeywords=[5]{
+        genfscon, fscon, portcon, netifcon, nodecon, pirqcon, 
+        iomemcon, ioportcon, pcidevicecon, devicetreecon,
+        ibpkeycon, ibendportcon,
+        fs_use_xattr, fs_use_task, fs_use_trans
+    },
+    sensitive=false,
+    morecomment=[s]{/*}{*/},
+    morecomment=[l]{\#},
+    morestring=[b]",
+}

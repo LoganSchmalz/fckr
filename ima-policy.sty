@@ -1,0 +1,45 @@
+\lstdefinelanguage{ima-policy}{
+    % Class 1: Actions
+    morekeywords={
+        measure, dont_measure, appraise, dont_appraise, 
+        audit, hash, dont_hash
+    },
+    % Class 2: "func=" Triggers (Strictly from policy-syntax.rst)
+    morekeywords=[2]{
+        MMAP_CHECK, BPRM_CHECK, CREDS_CHECK, FILE_CHECK, 
+        MODULE_CHECK, FIRMWARE_CHECK, POLICY_CHECK, 
+        KEXEC_KERNEL_CHECK, KEXEC_INITRAMFS_CHECK, 
+        KEXEC_CMDLINE, KEY_CHECK, CRITICAL_DATA, 
+        SETXATTR_CHECK, PATH_CHECK
+    },
+    % Class 3: LSM / Security Contexts
+    morekeywords=[3]{
+        obj_user, obj_role, obj_type, obj_lev_low, obj_lev_high,
+        subj_user, subj_role, subj_type, subj_lev_low, subj_lev_high
+    },
+    % Class 4: Condition Keys (Attributes)
+    morekeywords=[4]{
+        mask, fowner, fgroup, fsuuid, uid, gid, euid, egid,
+        fcap, fsname, digest_type, appraise_type, template,
+        pcr, keyrings, label, appraise_flag, appraise_algos
+    },
+    % Class 5: Values, Masks, and Built-in Templates
+    morekeywords=[5]{
+        % Access Masks (Documented + Unsupported)
+        MAY_READ, MAY_WRITE, MAY_APPEND, MAY_EXEC, 
+        MAY_OPEN, MAY_ACCESS, MAY_CHMOD, MAY_CHOWN,
+        MAY_SETATTR, MAY_NOT_BLOCK,
+        % Appraisal & Signature Extensions
+        imasig, sig, hash, modsig, sigv3, verity,
+        % Appraisal Flags
+        check_blacklist,
+        % Built-in Templates (from event-log-format.rst)
+        ima, ima-ng, ima-sig, ima-buf, ima-modsig, evm,
+        % Operational Flags & Algorithms
+        permit_directio, sha1, sha256, sha384, sha512, sm3
+    },
+    sensitive=true,
+    morecomment=[l]{\#},
+    morestring=[b]",
+    literate={=}{{\textcolor{gray}{=}}}1
+}

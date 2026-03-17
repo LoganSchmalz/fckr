@@ -57,6 +57,45 @@
   keywordstyle=\color{magenta},
   % morekeywords={sudo, chmod, chown, systemctl} % Add extra CLI tools here
 }
+\usepackage{selinux-cil}
+\lstdefinestyle{selinux-cil}{
+  language=selinux-cil,
+  keywordstyle=\color{blue}\bfseries,        % Declarations
+  keywordstyle=[2]\color{teal}\bfseries,     % Transitions
+  keywordstyle=[3]\color{violet},            % Logic
+  keywordstyle=[4]\color{orange},            % Variables
+  keywordstyle=[5]\color{olive}\itshape,     % Labeling/Contexts
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{red},
+  breaklines=true,
+  showstringspaces=false
+}
+\usepackage{selinux-policy}
+\lstdefinestyle{selinux-policy}{
+  language=selinux-policy,
+  keywordstyle=\color{blue}\bfseries,        % Declarations
+  keywordstyle=[2]\color{teal}\bfseries,     % Transitions
+  keywordstyle=[3]\color{violet},            % Logic
+  keywordstyle=[4]\color{orange},            % Variables
+  keywordstyle=[5]\color{olive}\itshape,     % Labeling/Contexts
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{red},
+  breaklines=true,
+  showstringspaces=false
+}
+\usepackage{ima-policy}
+\lstdefinestyle{ima-policy}{
+  language=ima-policy,
+  keywordstyle=\color{blue}\bfseries,        % Actions
+  keywordstyle=[2]\color{teal}\bfseries,     % Functions
+  keywordstyle=[3]\color{violet},            % LSM
+  keywordstyle=[4]\color{brown},             % Keys
+  keywordstyle=[5]\color{orange},            % Values/Masks/Templates% Declarations
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{red},
+  breaklines=true,
+  showstringspaces=false
+}
 
 \title{A Framework for Controlled Key Release}
 
@@ -359,7 +398,7 @@ or otherwise find an exploit to read \wcp from memory.
 The following SELinux policy establishes three types:
 \domaint for the \tpmsign executing domain, \exect for the \tpmsign executable, and \filet for protected files.
 % \begin{minted}{text}
-\begin{lstlisting}
+\begin{lstlisting}[style=selinux-policy]
 type tpm_sign_t; type tpm_sign_exec_t;
 application_domain(tpm_sign_t, tpm_exec_t);
 type tpm_sign_file_t; files_type(tpm_sign_file_t);
@@ -374,7 +413,7 @@ Deny rules are capable of overriding existing policy to prevent otherwise allowe
 The following rules prevent even a root user from relabeling a malicious program to \exect, reading or removing protections from \filet files,
 or launching or tracing \domaint processes.
 % \begin{minted}{text}
-\begin{lstlisting}
+\begin{lstlisting}[style=selinux-cil]
 (deny domain tpm_sign_exec_t (file (relabelto)))
 (deny domain tpm_sign_file_t (file (relabelfrom)))
 (deny domain tpm_sign_t (process (ptrace)))
@@ -400,7 +439,7 @@ the key adjustments being which types can transition to \domaint.
 We allow the \domaint domain to be unconfined since we trust our \tpmsign program,
 but further restricting its permissions is reasonable.
 % \begin{minted}{text}
-\begin{lstlisting}
+\begin{lstlisting}[style=selinux-policy]
 type_transition unconfined_t tpm_sign_exec_t:process tpm_sign_t;
 allow unconfined_t tpm_sign_t:process transition;
 role unconfined_r types { tpm_sign_t tpm_sign_exec_t };
@@ -435,7 +474,7 @@ We need IMA to protect the integrity of \tpmsign binary and relevant files.
 Our policy imitates the default \verb|tcb| and \verb|appraise_tcb| policies,
 then we include the following lines:
 % \begin{minted}{bash}
-\begin{lstlisting}
+\begin{lstlisting}[style=ima-policy]
 appraise obj_type=tpm_sign_exec_t appraise_type=imasig
 appraise obj_type=tpm_sign_files_t appraise_type=imasig
 \end{lstlisting}
@@ -779,7 +818,7 @@ The \verb|file_type| type includes permissions allowing unconfined contexts to a
 This is entirely reasonable in most situations where an administrator should be easily allowed to manipulate files.
 However, it is not suitable for developing protections such as ours,
 as unconfined contexts are given the following permissions:
-\begin{lstlisting}
+\begin{lstlisting}[style=selinux-policy]
 allow files_unconfined_type file_type:file { exec_file_perms manage_file_perms mounton quotaon relabel_file_perms watch watch_mount watch_reads watch_sb watch_with_perm };
 \end{lstlisting}
 % TODO: cite https://github.com/SELinuxProject/refpolicy/blob/2cba8023863718709d0349faf62a9f4da2248a3f/policy/modules/kernel/files.te#L230,
@@ -795,7 +834,7 @@ Deny rules are capable of overriding existing policy, however they are not avail
 Since deny rules are very explicit, they can compensate for pre-existing SELinux policy modules which leave unintended security holes.
 Thus, they are a suitable alternative to the above process of manually recreating simple things which could be based on existing macros.
 For example, to recreate our policy while making denials explicit:
-\begin{lstlisting}
+\begin{lstlisting}[style=selinux-cil]
 (deny domain tpm_sign_exec_t (file (relabelto)))
 (deny domain tpm_sign_file_t (file (relabelfrom)))
 
