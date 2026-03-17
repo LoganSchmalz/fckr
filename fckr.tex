@@ -1,7 +1,11 @@
 \DocumentMetadata{}
-%\documentclass[acmsmall]{acmart}
+% \documentclass[acmsmall]{acmart}
 \documentclass[sigconf]{acmart}
 % \documentclass{llncs}
+\newif\ifacm
+\newif\iflncs
+\IfClassLoadedTF{acmart}{\acmtrue}{}
+\IfClassLoadedTF{llncs}{\lncstrue}{}
 \usepackage[T1]{fontenc}
 \usepackage{pifont}
 % \usepackage{microtype}
@@ -99,7 +103,7 @@
 
 \title{A Framework for Controlled Key Release}
 
-\IfClassLoadedTF{acmart}{
+\ifacm
 % TODO : orcids
 \author{Logan Schmalz}
 \email{loganschmalz@ku.edu}
@@ -118,16 +122,13 @@
   \institution{University of Kansas}
   \city{Lawrence}
   \state{Kansas}
-  \country{USA}
-}
-}{}
-\IfClassLoadedTF{llncs}
-{
+  \country{USA}}
+\fi
+\iflncs
   \author{Logan Schmalz \and Perry Alexander}
   \institute{University of Kansas\\
-    \email{\{loganschmalz,palexand\}@ku.edu}
-  }
-}{}
+    \email{\{loganschmalz,palexand\}@ku.edu}}
+\fi
 
 \newcommand{\tpmsign}{\texttt{tpm\_sign}\xspace}
 \newcommand{\wcp}{\texttt{WCP}\xspace}
@@ -146,26 +147,10 @@
 \begin{document}
 \xspaceaddexceptions{\strut}
 
-\begin{abstract}
-  Modern security relies heavily on public key cryptography,
-  and it is necessary to protect private keys, and secrets in general, from attackers.
-  While multiple mechanisms exist to prevent secrets from being trivially read off the filesystem,
-  against a highly-capable adversary it is ideal to store secrets outside of main memory.
-  The TPM 2.0 is built into modern x86 hardware and is designed to be used for exactly this.
-  However, a lack of tight integration between the TPM and the operating system makes it difficult to protect secrets with high availability needs from arbitrary access.
-  % fails to protect keys stored in the TPM 2.0 from being used by arbitrary users, other than by fully restricting access to the TPM.
-  Using only existing infrastructure: SELinux, IMA, and LUKS containers,
-  we develop a stronger protection mechanism for TPM-stored secrets so access can be restricted to a specific program or user,
-  without limiting access to the TPM in general.
+\ifacm\input{abstract}\fi
+\maketitle
+\iflncs\input{abstract}\fi
 
-  % \keywords{First keyword  \and Second keyword \and Another keyword.}
-\end{abstract}
-
-\maketitle              % typeset the header of the contribution
-%
-%
-%
-%
 \section{Introduction}
 Public key cryptography is a key component of modern security, and is now ubiquitous: most Internet communication is encrypted and authenticated.  % signed ?
 However, this security relies on the assumption that private keys are kept secret.
@@ -367,20 +352,22 @@ or otherwise find an exploit to read \wcp from memory.
     The PCRs must be in the approved state to unlock the LUKS container to access \wcp,
     and also for \tpmsign to use \wcp to access \pk.
   }
-  \Description[Illustration of framework.]{
-    The image is an illustration of the components of the framework.
-    The components are the TPM, its PCRs, and the signing key;
-    the kernel security mechanisms: IMA, SELinux, and EVM;
-    the wildcard policy; the LUKS container containing the wildcard policy;
-    and the tpm_sign program that can access the wildcard policy.
-    Green arrows point from IMA and SELinux to tpm_sign, indicating IMA and SELinux protect tpm_sign.
-    Green arrows point from SELinux and EVM to the wildcard policy, indicating SELinux and EVM protect tpm_sign.
-    A blue arrow points from all the kernel security mechanisms into the TPM PCRs, indicating the security mechanisms are measured into the PCRs.
-    The LUKS container is represented by an orange wrapper around the wildcard policy.
-    A blue arrow points from the PCRs to the orange LUKS container, indicating the PCRs are necessary to unlock the LUKS container to access the wildcard policy.
-    A dashed blue arrow points from the PCRs to the wildcard policy, indicating the PCRs must still be in an approved state when using the wildcard policy to access the key.
-    A double red arrow points from the wildcard policy to the key, going through tpm_sign, indicating that the tpm_sign program uses the wildcard policy as the authorization value to access the key.
-  }
+  \ifacm
+    \Description[Illustration of framework.]{
+      The image is an illustration of the components of the framework.
+      The components are the TPM, its PCRs, and the signing key;
+      the kernel security mechanisms: IMA, SELinux, and EVM;
+      the wildcard policy; the LUKS container containing the wildcard policy;
+      and the tpm_sign program that can access the wildcard policy.
+      Green arrows point from IMA and SELinux to tpm_sign, indicating IMA and SELinux protect tpm_sign.
+      Green arrows point from SELinux and EVM to the wildcard policy, indicating SELinux and EVM protect tpm_sign.
+      A blue arrow points from all the kernel security mechanisms into the TPM PCRs, indicating the security mechanisms are measured into the PCRs.
+      The LUKS container is represented by an orange wrapper around the wildcard policy.
+      A blue arrow points from the PCRs to the orange LUKS container, indicating the PCRs are necessary to unlock the LUKS container to access the wildcard policy.
+      A dashed blue arrow points from the PCRs to the wildcard policy, indicating the PCRs must still be in an approved state when using the wildcard policy to access the key.
+      A double red arrow points from the wildcard policy to the key, going through tpm_sign, indicating that the tpm_sign program uses the wildcard policy as the authorization value to access the key.
+    }
+  \fi
   \label{fig:framework}
 \end{figure}
 
@@ -719,19 +706,19 @@ We experimentally demonstrated the following features of this setup:
 \newcommand{\no}{\textcolor{red}{\ding{56}}}   % X mark
 \newcommand{\na}{\textcolor{gray}{N.A.}}   % Minus mark
 
-\begin{comment}
-\begin{table*}[phtb]
-  \begin{tabular}{c c c c c c}
-    \toprule
-    \textbf{Boot State} & \textbf{\wcp Available} & \textbf{\wcp Readable} & \textbf{Modify \wcp} & \textbf{Modify IMA Policy} & \textbf{Modify SELinux Policy} \\
-    \midrule
-    Unapproved          & \no                     & If made available      & If made available    & \no                        & \yes                           \\
-    \addlinespace
-    Approved            & \yes                    & By \tpmsign            & \no                  & \no                        & \no                            \\
-    \bottomrule
-  \end{tabular}
-\end{table*}
-\end{comment}
+% \begin{comment}
+% \begin{table*}[phtb]
+%   \begin{tabular}{c c c c c c}
+%     \toprule
+%     \textbf{Boot State} & \textbf{\wcp Available} & \textbf{\wcp Readable} & \textbf{Modify \wcp} & \textbf{Modify IMA Policy} & \textbf{Modify SELinux Policy} \\
+%     \midrule
+%     Unapproved          & \no                     & If made available      & If made available    & \no                        & \yes                           \\
+%     \addlinespace
+%     Approved            & \yes                    & By \tpmsign            & \no                  & \no                        & \no                            \\
+%     \bottomrule
+%   \end{tabular}
+% \end{table*}
+% \end{comment}
 
 
 Our framework does not defend against attacks that can leak arbitrary program memory, like side-channel attacks.
@@ -785,7 +772,7 @@ TEEs may provide sufficient isolation to justify storing \wcp or \pk directly in
 potentially improving performance.
 
 Implementing support for TPM localities on Linux and SELinux (or equivalent) would be a significant step toward hardening our framework.
-By restricting access to TPM localities to certain programs, 
+By restricting access to TPM localities to certain programs,
 \pk could require a locality accessible only by \tpmsign, making \pk's use independent of the secrecy of \wcp.
 However, adversaries capable of corrupting the kernel/SELinux would still be able to work around this.
 This is our ideal way forward.
@@ -800,8 +787,8 @@ This is our ideal way forward.
 % BibTeX users should specify bibliography style 'splncs04'.
 % References will then be sorted and formatted in the correct style.
 %
-\IfClassLoadedTF{acmart}{\bibliographystyle{ACM-Reference-Format}}{}
-\IfClassLoadedTF{llncs}{\bibliographystyle{splncs04}}{}
+\ifacm\bibliographystyle{ACM-Reference-Format}\fi
+\iflncs\bibliographystyle{splncs04}\fi
 \bibliography{ref}
 
 \appendix

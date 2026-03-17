@@ -1,0 +1,47 @@
+\begin{abstract}
+  Modern security relies heavily on public key cryptography,
+  and it is necessary to protect private keys, and secrets in general, from attackers.
+  While multiple mechanisms exist to prevent secrets from being trivially read off the filesystem,
+  against a highly-capable adversary it is ideal to store secrets outside of main memory.
+  The TPM 2.0 is built into modern x86 hardware and is designed to be used for exactly this.
+  However, a lack of tight integration between the TPM and the operating system makes it difficult to protect secrets with high availability needs from arbitrary access.
+  % fails to protect keys stored in the TPM 2.0 from being used by arbitrary users, other than by fully restricting access to the TPM.
+  Using only existing infrastructure: SELinux, IMA, and LUKS containers,
+  we develop a stronger protection mechanism for TPM-stored secrets so access can be restricted to a specific program or user,
+  without limiting access to the TPM in general.
+
+  \iflncs\keywords{First keyword \and Second keyword \and Another keyword.}\fi
+\end{abstract}
+
+\ifacm
+\begin{CCSXML}
+<ccs2012>
+<concept>
+<concept_id>10002978.10002979.10002980</concept_id>
+<concept_desc>Security and privacy~Key management</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10002978.10002991.10002993</concept_id>
+<concept_desc>Security and privacy~Access control</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10002978.10002991.10002992</concept_id>
+<concept_desc>Security and privacy~Authentication</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10002978.10002991.10010839</concept_id>
+<concept_desc>Security and privacy~Authorization</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Security and privacy~Key management}
+\ccsdesc[500]{Security and privacy~Access control}
+\ccsdesc[500]{Security and privacy~Authentication}
+\ccsdesc[500]{Security and privacy~Authorization}
+\fi
+
