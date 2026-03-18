@@ -199,10 +199,9 @@ as each involves subtleties that significantly affect system security.
 The TPM 2.0 is widely available on modern x86 systems,
 either as firmware TPMs (fTPMs) integrated in AMD and Intel platforms or as discrete hardware modules,
 making it a practical target for our work.
-% Thus it is a good target for our work, since it is common and provides a portion of the capabilities we desire for protecting keys.
 The behavior of the TPM is standardized by the Trusted Computing Group (TCG) \cite{Trusted-Computing-Group:2025:TPM-2.0-Library}.
 The TPM serves as a root of trust of storage and root of trust of reporting.
-When used for Secure Boot-enabled firmware, it is used to reliably store boot measurements.
+When used with Secure Boot-enabled firmware, it is used to reliably store boot measurements.
 
 \subsubsection{Recording Boot Measurements}
 A TPM 2.0 for a PC must have at least 24 Platform Configuration Registers (PCRs) \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP}.
