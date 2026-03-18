@@ -207,7 +207,7 @@ When used with Secure Boot-enabled firmware, it is used to reliably store boot m
 A TPM 2.0 for a PC must have at least 24 Platform Configuration Registers (PCRs) \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP}.
 PCRs can store hashes of values through hash extension operations.
 If a PCR has a current hash value $x$, and it is being extended with a new hash $y$,
-the PCR's new value will become $x_{new} = \hash{\mathop{concat}(x,y)}$.
+the PCR's new value becomes $x_{new} = \hash{\mathop{concat}(x,y)}$.
 By correlating each hash extension to its source,
 successfully reconstructing a PCR value demonstrates integrity of the recorded measurements.
 For cryptographically secure hash functions like SHA-256,
