@@ -169,7 +169,7 @@ and never expose them to user-space or even kernel-space.
 The Trusted Platform Module 2.0 (TPM 2.0) is designed to do exactly this.
 It provides a hardware-backed root of trust for storage of private keys and other secrets,
 and supports authorization mechanisms such as passwords to access them.
-However, these mechanisms do not integrate tightly with operating system concepts such as users or programs.
+However, these mechanisms do not integrate tightly with operating system (OS) concepts such as users or programs.
 Authorization can either be satisfied by any program on the machine or requires manual user input.
 For high-availability services, manual authorization is infeasible,
 and the TPM has no built-in mechanism that meaningfully restricts key usage to a specific user or program.
@@ -187,7 +187,7 @@ We describe the required SELinux, IMA, and EVM configurations, boot-time measure
 Finally, we discuss limitations of current TPM integration and note that deeper kernel support for features such as TPM localities or resettable PCRs could enable stronger future designs.
 % The SELinux and IMA policies, the assisting boot-time setup and measurements,
 % and the TPM configuration necessary to accomplish this are the key contributions of our work.
-% Through these mechanisms, we take a step towards deeper operating system integration with TPM authorization without needing new hardware.
+% Through these mechanisms, we take a step towards deeper OS integration with TPM authorization without needing new hardware.
 % We also recognize that integrating other TPM mechanisms, such as localities or resettable PCRs, into Linux kernel would allow improved implementations.
 
 \section{Background}
@@ -214,40 +214,39 @@ For cryptographically secure hash functions like SHA-256,
 it is considered impossible for an adversary to discover $y$ such that $x_{new}$ can lie about previous measurements.
 
 This is the primary mechanism behind Secure Boot and other measured or trusted boot strategies.
-When the system boots, its Unified Extensible Firmware Interface (UEFI) measures the system firmware and the bootloader,
-and the bootloader measures the kernel and other parts of the operating system.
+During boot, the Unified Extensible Firmware Interface (UEFI) measures the system firmware and the bootloader,
+and the bootloader measures the kernel and other parts of the OS.
 Because users lack control during boot,
 the measurements reliably indicate firmware and software integrity.
 The measurements remain trustworthy at runtime as they are stored in PCRs 0--15, which are non-resettable and persist until reboot.
 
 \subsubsection{Protecting Keys and Other Secrets}\label{sec:key-protections}
-TPM-resident private keys are only usable within the TPM and will never be available on the operating system.
+TPM-resident private keys are only usable within the TPM and are never available on the OS.
 When they need to be stored elsewhere, i.e. on the filesystem, due to the TPM's limited resources,
-they are encrypted so they can only be used if they are reloaded into the same TPM.
+they are encrypted and can only be decrypted by the same TPM.
 Loading a key in the TPM merely caches it; authorization checks are still enforced on use.
-The TPM can also store secrets that do get released to the operating system;
-these have the same protection mechanisms available.
+The TPM can also store secrets that get released to the OS, but are otherwise similar.
 We choose to focus on TPM-resident keys.
 
 TPM-resident keys support conditional usage,
-including requiring a password, HMAC, a particular set of expected PCR values,
+possibly requiring a password, HMAC, a particular set of PCR values,
 or a more general ``policy'' to be satisfied.
 Password- or HMAC-based authorization requires a secret to be known at use time,
 but such secrets have no inherent protection against disclosure.
-Using PCRs effectively limits usage of a key to an administrator-approved boot configuration.
+PCRs effectively limit usage of a key to an administrator-approved boot configuration.
 Keys are tied to their authorization mechanism.
 For password-authorized keys, it is possible to change the password.
 For simple PCR-based authorization,
-there is no mechanism to change the expected PCRs,
-which causes problems across system updates \cite{Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys,Trusted-Computing-Group:2025:TCG-TPM-2.0-Part1-Architecture}.
+the expected PCRs cannot be changed,
+which is problematic for system updates \cite{Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys,Trusted-Computing-Group:2025:TCG-TPM-2.0-Part1-Architecture}.
 
 Fortunately, policy-based authorization is more advanced.
 Flexible policies can be made via ``wildcard policies'' or ``authorized policies'' \cite{Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys}.
 Wildcard policies must be signed by an administrator with a private key,
-where the corresponding public key is included in the creation details for the TPM-resident key.
+where the corresponding public key is included when creating the TPM-resident key.
 Policies can also include PCR checks.
-Thus, wildcard policies allow keys to have changeable PCR requirements
-and remain usable after system updates that affect boot measurements.
+Thus, wildcard policies provide a way to change PCR requirements
+so keys remain usable even when boot measurements change.
 Wildcard policies may also be leveraged to allow multiple policies to authorize usage of a single key,
 or to utilize the same policy for different keys, including keys on different devices.
 
