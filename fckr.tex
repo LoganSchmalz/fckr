@@ -183,14 +183,13 @@ Authorization can either be satisfied by any program on the machine or requires 
 For high-availability services, manual authorization is infeasible,
 and the TPM has no built-in mechanism that meaningfully restricts key usage to a specific user or program.
 
-At the same time, the Unified Extensible Firmware Interface (UEFI), the standard firmware platform for computers,
-uses the TPM for Secure Boot to establish firmware and software integrity.
+At the same time, Secure Boot utilizes the TPM to establish firmware and software integrity.
 With this, it is possible to ensure that Security-Enhanced Linux (SELinux) and the Linux Integrity Measurement Architecture (IMA)
 are enabled with an approved configuration.
 Alongside the Extended Verification Module (EVM) and Linux Unified Key Setup (LUKS) containers,
-these kernel-level mechanisms can be used to enforce fine-grained access control over TPM-resident secrets.
+we can enforce fine-grained access control over TPM-resident secrets.
 
-In this work, we demonstrate how these existing security mechanisms can be combined along with
+In this work, we demonstrate how to combine these existing security mechanisms with
 TPM policy authorization to restrict access to TPM-resident secrets to specific programs or users,
 without globally restricting access to the TPM.
 We describe the required SELinux, IMA, and EVM configurations, boot-time measurements, LUKS setup, and TPM configuration necessary to achieve this.
@@ -213,7 +212,6 @@ making it a practical target for our work.
 The behavior of the TPM is standardized by the Trusted Computing Group (TCG) \cite{Trusted-Computing-Group:2025:TPM-2.0-Library}.
 The TPM serves as a root of trust of storage and root of trust of reporting.
 When used for Secure Boot-enabled firmware, it is used to reliably store boot measurements.
-% ! Not technically a root of trust of measurement, that would be the UEFI
 
 \subsubsection{Recording Boot Measurements}
 A TPM 2.0 for a PC must have at least 24 Platform Configuration Registers (PCRs) \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP}.
@@ -226,7 +224,7 @@ For cryptographically secure hash functions like SHA-256,
 it is considered impossible for an adversary to discover $y$ such that $x_{new}$ can lie about previous measurements.
 
 This is the primary mechanism behind Secure Boot and other measured or trusted boot strategies.
-When the system boots, its UEFI measures the system firmware and the bootloader,
+When the system boots, its Unified Extensible Firmware Interface (UEFI) measures the system firmware and the bootloader,
 and the bootloader measures the kernel and other parts of the operating system.
 Because users lack control during boot,
 the measurements reliably indicate firmware and software integrity.
@@ -382,7 +380,7 @@ or otherwise find an exploit to read \wcp from memory.
 %         type user_home_dir_t;
 % }
 
-The following SELinux policy establishes three types:
+Our SELinux policy establishes three types:
 \domaint for the \tpmsign executing domain, \exect for the \tpmsign executable, and \filet for protected files.
 % \begin{minted}{text}
 \begin{lstlisting}[style=selinux-policy]
@@ -392,10 +390,9 @@ type tpm_sign_file_t; files_type(tpm_sign_file_t);
 allow tpm_sign_t tpm_sign_file_t:file { read open create getattr };
 \end{lstlisting}
 % \end{minted}
-% TODO: cut line about automatic labelling?
 
 We also utilize a short Common Intermediate Language (CIL) policy to enforce explicit deny rules,
-which are not available in the standard policy format.
+which are not available in the standard policy format. % TODO : provide a citation for deny rules
 Deny rules are capable of overriding existing policy to prevent otherwise allowed operations.
 The following rules prevent even a root user from relabeling a malicious program to \exect, reading or removing protections from \filet files,
 or launching or tracing \domaint processes.
