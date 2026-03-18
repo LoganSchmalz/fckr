@@ -672,10 +672,10 @@ We experimentally demonstrated the following features of this setup:
   \item When the system is booted in an unapproved state:
         \begin{itemize}
           \item The LUKS container will not open without a password, and \wcp will not be available.
-                Thus, \wcp cannot be relabelled either.
+                Thus, \wcp cannot be relabelled.
           \item If somehow the container is unlocked and \wcp is available, the PCRs specified in \wcp will not match and \pk will not be usable.
-                Thus, the contents of \wcp must be maintained until the system is rebooted to an approved state.
-          \item It is not possible to corrupt the IMA policy, because IMA policies require a signature.
+                Thus, an adversary must maintain the contents of \wcp until the system is rebooted to an approved state.
+          \item It is not possible to corrupt the IMA policy, because custom IMA policies require a signature.
         \end{itemize}
   \item When the system is booted in an approved state (IMA and SELinux working as intended), it is not possible to:
         \begin{itemize}
@@ -683,7 +683,7 @@ We experimentally demonstrated the following features of this setup:
           \item Corrupt the \tpmsign binary to leak information
           \item Remove the \filet label from \wcp
           \item Corrupt the IMA or SELinux policies
-          \item Access \wcp without \tpmsign
+          \item Access \wcp without going through \tpmsign
         \end{itemize}
 \end{itemize}
 
