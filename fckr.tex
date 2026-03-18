@@ -408,8 +408,8 @@ Note that the second \verb|typeattributeset| (for the last deny rule) should be 
 if only specific programs should be able to launch \tpmsign.
 
 We remove the last deny rule and utilize the following rules in our development environment,
-which must be strictly adjusted for real-world systems,
-the key adjustments being which types can transition to \domaint.
+which must be strictly adjusted for real-world systems
+(primarily, which types can transition to \domaint).
 We allow the \domaint domain to be unconfined since we trust our \tpmsign program,
 but further restricting its permissions is reasonable.
 % \begin{minted}{text}
@@ -420,7 +420,6 @@ role unconfined_r types { tpm_sign_t tpm_sign_exec_t };
 unconfined_domain(tpm_sign_t);
 \end{lstlisting}
 % \end{minted}
-% TODO: allow anyone to delete file?
 
 We recommend making SELinux state immutable using the following command:
 % \begin{minted}{bash}
@@ -430,18 +429,18 @@ setsebool -P secure_mode_policyload on
 % \end{minted}
 This makes changing policy or changing SELinux to permissive mode impossible at runtime,
 and disabling this for approved changes becomes slightly more complex.
-If this is not possible, a more complex IMA policy may provide some protection.
+If this is not possible, a more complex IMA policy may suffice.
 
 Since SELinux policy is often considered frustrating to work with,
 we attempted to minimize our reliance on SELinux.
-Additionally, since support for deny rules was finalized during our work on this project,
-we initially explored alternative mechanisms to further protect our TPM-related files.
+Additionally, since support for deny rules was conveniently finalized during our work on this project,
+we initially explored other mechanisms.
 Concerned about an adversary replacing the \tpmsign binary with a malicious version or
 modifying the relevant SELinux labels, we turned to IMA and EVM.
 Further, for our research outside this particular work, we must protect other infrastructure which interacts with
 the \tpmsign binary.
-While it is likely these concerns could be solved with a strict, immutable SELinux policy and extensive boot measurements,
-we believe IMA-based protections are simpler to understand and add an additional, more dynamic layer of protection.
+While SELinux and extensive boot measurements could likely resolve our concerns,
+we believe IMA-based protections are easier to understand and add an additional, more dynamic layer of protection.
 
 \subsection{IMA Policy}
 We need IMA to protect the integrity of \tpmsign binary and relevant files.
