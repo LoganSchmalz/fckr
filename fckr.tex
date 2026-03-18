@@ -157,21 +157,12 @@ However, this security relies on the assumption that private keys are kept secre
 In small-scale, personal settings, users can reasonably trust one another to protect their keys.
 In contrast, large-scale systems such as web servers handle thousands of requests per second, and the security of their keys depends entirely on machine configuration and automated processes.
 In such settings, keys must be both highly available and strongly protected.
-% When the data being transmitted is emails, and the correspondents have met in real life,
-% it is easy to trust that the other person is conscientious of the security of their key.
-% However, when the data being transmitted is a webpage utilizing TLS, from a server that gets thousands of requests per second,
-% suddenly the security of the keys depends on the configurations and automated processes of the machines involved.
-% TODO: consider reword or cut below
-% And when the data being transmitted is evidence that a gamer is not running cheats on their computer,
-% letting evidence be controlled by users is detrimental.
 
 A root-level compromise to a system is often catastrophic,
 and systems are designed to prevent such events.
 Despite best practices, however,
 adversaries sometimes gain root capabilities.
 This raises a critical question: how can secrets such as private keys be protected even from a root-level attacker, while remaining usable by legitimate services?
-% Protecting private keys gainst root-level attackers remains an open-challenge.
-% So how do we protect secrets like private keys from root-level attackers?
 
 One approach is to store secrets outside the main memory,
 and never expose them to user-space or even kernel-space.
