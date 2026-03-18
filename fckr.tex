@@ -283,6 +283,7 @@ It is also possible to use signatures instead of hashes to detect corruption of 
 This allows for more dynamicity in the system, as switching IMA from \appraise to \fix mode requires a system reboot, and
 allowing hashes to be overwritten at runtime is unsafe, as an adversary may know the expected value.
 In contrast, signatures can be updated safely in \appraise mode because the administrator's signing key remains protected.
+This can make it easier to install and update programs and files.
 
 By default, some distributions require any custom IMA policies and public keys that get loaded to be signed by an administrator.
 This involves adding a key certificate to the UEFI Machine Owner Keys, then signing IMA policies and X.509 keys on the filesystem with the appropriate private key.
@@ -463,12 +464,11 @@ appraise obj_type=tpm_sign_exec_t appraise_type=imasig
 appraise obj_type=tpm_sign_files_t appraise_type=imasig
 \end{lstlisting}
 % \end{minted}
-Using \verb|appraise_type=imasig| makes signatures required for these files,
+We require signatures for these files with \verb|appraise_type=imasig|,
 which is stronger than only requiring hashes.
-It is also then possible to modify the files without rebooting the system and get an administrator's signature to correct IMA's expected value.
-This can make it easier to update relevant files if necessary.
 The first rule effectively prevents an adversary from relabeling a malicious binary to \exect,
 since all files with that label require an administrator's signature.
+% ! TODO : consider removing second rule?
 
 The flexibility of IMA policy configuration should make it possible to cover any desired subset of the filesystem
 and ensure the desired level of integrity.
