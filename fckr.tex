@@ -394,7 +394,7 @@ allow tpm_sign_t tpm_sign_file_t:file { read open create getattr };
 We also utilize a short Common Intermediate Language (CIL) policy to enforce explicit deny rules,
 which are not available in the standard policy format. % TODO : provide a citation for deny rules
 Deny rules are capable of overriding existing policy to prevent otherwise allowed operations.
-The following rules prevent even a root user from relabeling a malicious program to \exect, reading or removing protections from \filet files,
+We prevent even a root user from relabeling a malicious program to \exect, reading or removing protections from \filet files,
 or launching or tracing \domaint processes.
 % \begin{minted}{text}
 \begin{lstlisting}[style=selinux-cil]
