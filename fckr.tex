@@ -304,7 +304,7 @@ Thus, we favor the widespread, easy-to-use LUKS mechanisms.
 
 \subsection{Limitations of Available Mechanisms}
 As key protections were discussed in \zcref[S]{sec:key-protections},
-notice the TPM lacks authorization mechanisms that integrate directly with operating system concepts such as user permissions or programs.
+notice the TPM lacks authorization mechanisms that integrate directly with OS concepts such as user permissions or programs.
 The TPM has a feature called ``localities'' which is intended to be used to indicate the origin of a command (hardware, kernel, user-level software) \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP,Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys}.
 In theory, using a specific locality to restrict a secret to one program is a good idea.
 However, the TPM trusts the operating system to control localities, and there is no existing mechanism, SELinux included, designed to accomplish this.
