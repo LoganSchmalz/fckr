@@ -307,11 +307,32 @@ As key protections were discussed in \zcref[S]{sec:key-protections},
 notice the TPM lacks authorization mechanisms that integrate directly with OS concepts such as user permissions or programs.
 The TPM has a feature called ``localities'' which is intended to be used to indicate the origin of a command (hardware, kernel, user-level software) \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP,Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys}.
 In theory, using a specific locality to restrict a secret to one program is a good idea.
-However, the TPM trusts the operating system to control localities, and there is no existing mechanism, SELinux included, designed to accomplish this.
+However, the TPM trusts the OS to control localities, and there is no existing mechanism, SELinux included, designed to accomplish this.
+In practice, any entity allowed to access the TPM can make a request in place of any other entity without inherent distinction.
 
-% ? optional
-% While IMA is powerful,
-% complex policy configurations can place systems into states that prevent successful boot without reverting to \fix mode.
+\section{Adversary Model and Defense Methodology}
+We assume an adversary has root privileges.
+Without our framework, the adversary can read or write any file,
+install kernel modules, or modify the boot setup and reboot the system;
+thus, they can access the TPM and any files necessary for a particular request.
+We assume the adversary has no physical access to the machine, so the hardware and firmware are trustworthy.
+
+Due to the described limitations of the TPM,
+% Since the TPM cannot differentiate OS entities,
+we rely on the OS to protect our key.
+We want to avoid artificially restricting access to the TPM or other system components.
+% That is, in some sense, the security of the system should not depend on the unavailability of useful security mechanisms.
+
+A secret is required to use our key.
+If the secret is well-protected, it distinguishes the entities that can and cannot access the secret.
+If integrity is ensured for the entity using the secret, only the intended, legitimate entity can access the key from the TPM.
+This suggests the secret must only be available when access controls and integrity are being enforced.
+We use SELinux to provide access controls, IMA and EVM for integrity measurement,
+measured boot to ensure these mechanisms are enforced,
+and a LUKS container to protect the secret when they are not enforced.
+Importantly, our protections apply to root-level users,
+and also prevent alternative means of leaking the secret like installing kernel modules or inspecting program memory.
+Any of these mechanisms could be swapped for an alternative implementation with the same principles.
 
 \section{Framework}
 In our framework, access to a TPM key \pk is restricted to a single program, which we denote \tpmsign,
