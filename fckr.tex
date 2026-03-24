@@ -1,12 +1,15 @@
-\DocumentMetadata{}
+\DocumentMetadata{lang=en}
 % \documentclass[acmsmall]{acmart}
 \documentclass[sigconf]{acmart}
-% \setkeys{acmart.cls}{balance=false}
+% \documentclass[12pt,letterpaper]{kuthesis}
 % \documentclass{llncs}
 \newif\ifacm
+\newif\iftwocolumn
 \newif\iflncs
+\newif\ifthesis
 \IfClassLoadedTF{acmart}{\acmtrue}{}
 \IfClassLoadedTF{llncs}{\lncstrue}{}
+\IfClassLoadedTF{kuthesis}{\thesistrue}{}
 \usepackage[T1]{fontenc}
 \usepackage{pifont}
 % \usepackage{microtype}
@@ -135,7 +138,7 @@
 \newcommand{\domaint}{\texttt{tpm\_sign\_t}\xspace}
 \newcommand{\filet}{\texttt{tpm\_sign\_file\_t}\xspace}
 \newcommand{\exect}{\texttt{tpm\_sign\_exec\_t}\xspace}
-\newcommand{\pcrpolicy}{\texttt{pcr.policy\_desired}\xspace}
+\newcommand{\pcrpolicy}{\texttt{pcr.wcp}\xspace}
 \newcommand{\systemd}{\texttt{systemd}\xspace}
 \newcommand{\appraise}{\texttt{appraise}\xspace}
 \newcommand{\fix}{\texttt{fix}\xspace}
@@ -144,12 +147,70 @@
 
 \newcommand{\hash}[1]{\mathop{hash}(#1)}
 
+\ifthesis
+% \usepackage{times}
+\counterwithout{section}{chapter} % Removes the chapter prefix from section numbers
+\usepackage{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{3}
+\usepackage[numbers,sort&compress]{natbib}
+
+\makeatletter
+\usepackage{setspace}
+\usepackage{dcolumn}
+
+\author{Logan Schmalz}
+% \title{A Framework for Controlled Key Release}
+\date{2026}
+\priorcreds
+{B.S. Computer Science, University of Kansas, 2023}
+{B.S. Mathematics, University of Kansas, 2023}
+\dept{Electrical Engineering and Computer Science}
+\degreetitle{M.S. Computer Science}
+\papertype{Thesis}
+\committee{Perry Alexander}{Sankha Guriya}{}{}{}{}{}
+\role{Chair:}{}{}{}{}{}{}
+
+% \@printd@testrue
+\datedefended{MM DD, YYYY}
+\dateapproved{MM DD, YYYY}
+
+\@ifundefined{showcaptionsetup}{}{%
+ \PassOptionsToPackage{caption=false}{subfig}}
+\usepackage{subfig}
+\makeatother
+\fi
+
+\ifacm
+\makeatletter
+\@ifclasswith{acmart}{sigconf}{
+  \twocolumntrue
+}{}
+\makeatother
+\fi
+
 \begin{document}
 \xspaceaddexceptions{\strut}
 
 \ifacm\input{abstract}\fi
 \maketitle
 \iflncs\input{abstract}\fi
+
+\ifthesis
+\doublespace
+\input{abstract}
+\longstyle
+\begin{acknowledgements}
+Test
+\end{acknowledgements}
+\tableofcontents{}
+\listoffigures
+\addcontentsline{toc}{chapter}{List of Figures}
+\listoftables
+\addcontentsline{toc}{chapter}{List of Tables}
+\newpage
+\fi
 
 \section{Introduction}
 Public key cryptography is a key component of modern security, and is now ubiquitous: most Internet communication is encrypted and authenticated.  % signed ?
@@ -453,8 +514,8 @@ we believe IMA is easy to grasp and adds an additional, more dynamic layer of pr
 
 \subsection{IMA Policy}
 IMA protects the integrity of \tpmsign binary and relevant files.
-Our policy imitates the default \verb|tcb| and \verb|appraise_tcb| policies,
-then we include the following lines:
+Our policy imitates the default \verb|tcb| and \verb|appraise_tcb| policies \cite{IBM:IMA-Policy},
+then we include the following lines at the beginning:
 % \begin{minted}{bash}
 \begin{lstlisting}[style=ima-policy]
 appraise obj_type=tpm_sign_exec_t appraise_type=imasig
@@ -576,14 +637,14 @@ The wildcard policy that sets the PCR requirements must be created and signed wi
 The file \pcrpolicy is \wcp.
 Our commands create the policy on our development machine to easily collect the PCR values.
 The policy can be created on another machine when the approved PCR values are known.
-To update \wcp (e.g. after system updates), this is the step that must be repeated.
+To update \wcp (e.g. after system updates), these commands can be repeated.
 % \begin{minted}{bash}
 \begin{lstlisting}[style=bash]
 tpm2_pcrread -opcrs.sha256 sha256:7,8,9,11,14
 tpm2_startauthsession -S session.ctx
-tpm2_policypcr -S session.ctx -l sha256:7,8,9,11,14 -f pcrs.sha256 -L pcr.policy_desired
+tpm2_policypcr -S session.ctx -l sha256:7,8,9,11,14 -f pcrs.sha256 -L pcr.wcp
 tpm2_flushcontext session.ctx
-openssl dgst -sha256 -sign policy_key_private.pem -out pcr.signature pcr.policy_desired
+openssl dgst -sha256 -sign policy_key_private.pem -out pcr.sig pcr.wcp
 \end{lstlisting}
 % \end{minted}
 
@@ -603,27 +664,24 @@ The important files here are \verb|key.pub| and \verb|key.priv|, the public and 
 We also create a PEM-formatted copy of the public key for sharing.
 
 \subsubsection{Using the Signing Key}
-Our program \tpmsign is made the only program allowed to access
-\wcp (\pcrpolicy) by labeling it \exect.
-It attempts to reload \pk from a transient session,
-and if no valid session exists, it re-generates the primary key and loads \pk from its file.
+We make \tpmsign the only program allowed to access
+\wcp (\pcrpolicy) by giving it the \exect label.
+It attempts to reload \pk from a transient session;
+if no valid session exists, it re-generates the primary key and loads \pk from its file.
 \pk and the administrator's public policy key may optionally be placed in the TPM's non-volatile memory to reduce loading overhead.
 After loading, every use of \pk must follow the standard protocol to authorize key usage with the wildcard policy \cite{tpm2-software:2026:policyauthorize}.
 
 \subsection{Using EVM on \wcp}
 After giving \wcp the \filet label,
-we use a portable EVM signature to protect it.
-We apply the EVM portable signature (and also an IMA signature) to \wcp via \verb|evmctl| \cite{IBM:IMA-utilities-evmctl}.
+we apply the portable EVM (and IMA) signature to protect it via \verb|evmctl| \cite{IBM:IMA-utilities-evmctl}.
 % \begin{minted}{bash}
 \begin{lstlisting}[style=bash]
-evmctl sign --imasig --portable pcr.policy_desired -k key.priv
+evmctl sign --imasig --portable pcr.wcp -k key.priv
 \end{lstlisting}
 % \end{minted}
 This makes it impossible to change the SELinux labels, file owners, or UNIX permissions of \wcp.
 In a real environment, the private key should be held on a separate machine
-and the signature should be assigned manually to the file via \verb|setfattr|.
-
-
+and the signatures should be assigned manually via \verb|setfattr|.
 
 \subsection{LUKS Container}
 % TODO : maybe cite something here?
@@ -776,6 +834,7 @@ This is our ideal way forward.
 %
 \ifacm\bibliographystyle{ACM-Reference-Format}\fi
 \iflncs\bibliographystyle{splncs04}\fi
+\ifthesis\bibliographystyle{ACM-Reference-Format}\fi
 \bibliography{ref}
 
 \appendix
@@ -821,7 +880,7 @@ via logical expressions like \verb|not|, \verb|and|, \verb|or|, etc.
 This is because, in CIL policy, rules (\verb|allow|, \verb|deny|, etc.) must take an identifier in the first and second arguments.
 In our policy, this allows us to deny reads from every domain except \domaint.
 
-\balance
+\ifacm\iftwocolumn\balance\fi\fi
 \section{Setting up IMA}
 Setting up IMA is a complicated process on Fedora.
 To ensure trustworthiness of the installed IMA policy and signatures, there are some setup steps that go beyond ``put a file in a place''.
@@ -834,7 +893,7 @@ The \verb|integrity| module loads IMA keys from \verb|/etc/keys/ima/| as describ
 Before that, it loads the EVM keys from \verb|/etc/keys/evm/|;
 thus, another key with a similar setup (or the same key as generated for IMA in the ``IMA Signing Key and Certificate'' section) must also be placed there to serve as the EVM signature verification key.
 
-As discussed briefly in \zcref{sec:implementation-details}, it seems best on Fedora to enable EVM HMACs as well.
+As discussed briefly in \zcref[S]{sec:implementation-details}, it seems best on Fedora to enable EVM HMACs as well.
 This requires creating a kernel masterkey (we make a trusted masterkey since we are using a TPM) and making a child encrypted EVM HMAC key.
 \begin{lstlisting}[style=bash]
 tpm2_createprimary --key-algorithm=rsa2048 --key-context=key.ctxt
