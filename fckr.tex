@@ -213,8 +213,8 @@ Test
 \fi
 
 \section{Introduction}
-Public key cryptography is a key component of modern security, and is now ubiquitous: most Internet communication is encrypted and authenticated.  % signed ?
-However, this security relies on the assumption that private keys are kept secret.
+Public key cryptography is a ubiquitous component of modern security: most Internet communication is encrypted and authenticated.  % signed ?
+However, it relies on the assumption that private keys are kept secret.
 In small-scale, personal settings, users can reasonably trust one another to protect their keys.
 In contrast, large-scale systems such as web servers handle thousands of requests per second, and the security of their keys depends entirely on machine configuration and automated processes.
 In such settings, keys must be both highly available and strongly protected.
@@ -224,29 +224,21 @@ and systems are designed to prevent such events.
 Despite best practices, adversaries sometimes gain root capabilities.
 This raises a critical question: how can secrets such as private keys be protected even from a root-level attacker, while remaining usable by legitimate services?
 
-Storing secrets outside main memory so they are not exposed is one step towards this.
-The Trusted Platform Module (TPM) 2.0 is designed to do exactly that.
-It serves as a hardware root of trust for storage of private keys and other secrets,
+The Trusted Platform Module (TPM) 2.0 can store keys and other secrets outside of main memory so they are never exposed,
 and supports authorization mechanisms to access them.
-However, these mechanisms do not integrate tightly with OS concepts such as users or programs.
+However, it lacks integration with OS concepts such as users or programs.
 When manual authorization is infeasible,
 the TPM has no built-in mechanism that meaningfully \textit{authenticates} OS entities to restrict key usage.
+At the same time, the TPM supports measured boot which establishes firmware and software integrity.
+Thus, it is possible to ensure proper authentication mechanisms are enforced at the OS level, before allowing keys to be used.
 
-At the same time, Secure Boot utilizes the TPM to establish firmware and software integrity.
-With this, it is possible to ensure that Security-Enhanced Linux (SELinux) and the Linux Integrity Measurement Architecture (IMA)
-are enabled with an approved configuration.
-Alongside the Extended Verification Module (EVM) and Linux Unified Key Setup (LUKS) containers,
-we can enforce fine-grained access control over TPM-resident secrets.
-
-In this work, we demonstrate how to combine these existing security mechanisms with
-TPM policy authorization to authenticate access to TPM-resident secrets,
-without globally restricting access to the TPM.
+% TODO : we present a general methodology and demonstrate how to implement it with...?
+In this work, we demonstrate how to combine 
+Security-Enhanced Linux (SELinux), the Linux Integrity Measurement Architecture (IMA),
+the Extended Verification Module (EVM), and Linux Unified Key Setup (LUKS) containers with
+measured boot and TPM policy authorization to enforce fine-grained access control to TPM-resident secrets.
 We describe the required SELinux, IMA, and EVM configurations, boot-time measurements, LUKS setup, and TPM configuration necessary to achieve this.
 Finally, we discuss limitations of current TPM integration and note that deeper kernel support leveraging TPM localities or resettable PCRs could enable stronger future designs.
-% The SELinux and IMA policies, the assisting boot-time setup and measurements,
-% and the TPM configuration necessary to accomplish this are the key contributions of our work.
-% Through these mechanisms, we take a step towards deeper OS integration with TPM authorization without needing new hardware.
-% We also recognize that integrating other TPM mechanisms, such as localities or resettable PCRs, into Linux kernel would allow improved implementations.
 
 \section{Background}
 Our framework requires careful implementation of several mechanisms.
