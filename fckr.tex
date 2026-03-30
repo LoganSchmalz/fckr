@@ -270,16 +270,26 @@ Because users cannot interfere with early boot,
 the measurements reliably indicate firmware and software integrity.
 The measurements remain trustworthy at runtime as they are stored in PCRs 0--15, which are non-resettable and persist until reboot \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP}.
 
+\subsubsection{Loading and Storing Secrets}
+% TODO : cite here
+Since the TPM has limited storage, secrets are often unloaded and reloaded,
+and they are stored as a hierarchy.
+Primary keys act as the root parents of the hierarchy and are deterministically generated.
+Their children are regular, randomly generated keys and other secrets.
+Parent keys encrypt their children for external storage,
+so they must be regenerated (primary keys) or reloaded (regular keys) to decrypt their children.
+
+To improve performance of reloading keys, the TPM can reload a session where the key was already loaded if the system has not rebooted.
+Keys can also be persistently stored in the TPM's non-volatile memory (NVRAM) for a further minor improvement.
+Loading a key in the TPM merely caches it; authorization checks are still enforced upon use.
+
 \subsubsection{Protecting Keys and Other Secrets}\label{sec:key-protections}
-TPM-resident private keys are only usable within the TPM and are never available on the OS.
-When they need to be stored elsewhere, i.e. on the filesystem, due to the TPM's limited resources,
-they are encrypted and can only be decrypted by the same TPM.
-Loading a key in the TPM merely caches it; authorization checks are still enforced on use.
-The TPM can also store secrets that get released to the OS, but are otherwise similar.
-We choose to focus on TPM-resident keys.
+TPM-resident private keys are only usable within the TPM itself and are never available on the OS.
+Other secrets have the same protections available, but get released to the OS when those protections are satisfied.
+We focus on TPM-resident keys, without loss of generality.
 
 TPM-resident keys support conditional usage,
-optionally requiring a password, HMAC, a particular set of PCR values,
+optionally requiring a password, HMAC, particular PCR values,
 or a more general ``policy'' to be satisfied.
 Password- or HMAC-based authorization requires a secret to be known at use time,
 but such secrets have no inherent protection against disclosure.
@@ -293,7 +303,7 @@ which is problematic for system updates \cite{Arthur:2015:A-Practical-Guide-to-T
 Fortunately, policy-based authorization is more advanced.
 Flexible policies can be made via ``wildcard policies'' or ``authorized policies'' \cite{Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys}.
 Wildcard policies must be signed by an administrator with a private key,
-where the corresponding public key is included when creating the TPM-resident key.
+and the corresponding public key is included in the TPM-resident key's creation details.
 Policies can also include PCR checks.
 Thus, wildcard policies provide a way to change PCR requirements
 so keys remain usable even when boot measurements change.
