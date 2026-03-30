@@ -766,34 +766,30 @@ We experimentally demonstrated the following features of this setup:
 % \end{table*}
 % \end{comment}
 
-
-Our framework does not defend against attacks that can leak arbitrary program memory, like side-channel attacks.
-Our \tpmsign binary is short-lived to minimize the surface area for these attacks.
-We can also demonstrate a rootkit that corrupts IMA and/or SELinux behavior, bypassing our protections.
-However, on a protected system, especially when IMA checks kernel modules, it is difficult to actually install such rootkits.
-Thus, we believe bypassing our framework on an otherwise uncorrupted, up-to-date kernel has equivalent difficulty to finding at least one zero-day exploit.
-
-Even though the LUKS container strategy should protect \wcp (or a password) sufficiently,
-\wcp including PCRs related to our protection mechanisms provides some extra assurance that if \pk is used, then the system at least booted in a state approved by \wcp.
-Since it is sometimes necessary to unlock the LUKS container when the system is in an unapproved state to accomodate a system update, it is still beneficial to know \pk cannot be used at that moment.
+While the LUKS container should protect \wcp (or a password) sufficiently,
+it is sometimes necessary to manually unlock the LUKS container when the system is in an unapproved state to accomodate a system update.
+Since it is still beneficial to know \pk cannot be used at that moment,
+\wcp also checking PCRs provides some extra assurance that if \pk is used, then the system booted in an approved state.
+Note that \wcp is not necessarily unprotected during an unapproved boot, as the IMA and SELinux policies may still be approved but another part of the system may have changed.
+To exploit a lapse in protection caused by a manual unlock, an adversary must remember the contents of \wcp until the system is rebooted to an approved state.
 
 There are three primary limitations of this secret protection scheme.
-The first is in real-world scenarios, strong IMA policies (protecting infrastructure other than ours) can make systems annoying to change or update.
-This is a recognized problem and work is being done to mitigate this---for example,
-by making restrictions on approved kernel modules more practical.
-%---but such improvements are not yet widely deployed.
-% TODO: cite
+The first is protecting a large subset of a system with IMA can make the system annoying to change or update.
+This is an acknowledged problem, but an unfortunate reality of using IMA.
 
-The second limitation is assuming IMA and SELinux protections are not bypassed under an approved boot.
-Against an adversary capable of bypassing SELinux and IMA, installing a rootkit, or otherwise corrupting the kernel at runtime,
+The second limitation is assuming IMA and SELinux protections cannot be bypassed under an approved boot.
+Against an adversary capable of installing a rootkit or otherwise corrupting the kernel at runtime,
 the contents of \wcp can be leaked such that it, and thus \pk, will be persistently available to the adversary until boot PCRs change (e.g. via a system update),
 regardless of the state of SELinux and IMA.
-% ? Attacks in the vein of rootkits disabling SELinux/IMA functionality are demonstrable.
+We can demonstrate a rootkit that corrupts IMA/SELinux behavior,
+however, on a system where IMA checks kernel modules, it is prohibitively difficult to install.
+In addition, our framework does not independently defend against exploits that leak arbitrary memory, like side-channel attacks,
+but \tpmsign is short-lived to limit opportunity for such attacks.
+Thus, we believe bypassing our framework on an otherwise uncorrupted, up-to-date kernel has equivalent difficulty to finding at least one zero-day exploit.
 
 The final limitation is the speed of the TPM.
-A non-virtualized TPM typically takes a few hundred milliseconds to complete the sequence of operations required for signing.
-Thus, the TPM is a limiting factor for environments that would need high-frequency operations.
-% ? The slow speed of the TPM is considered a design feature to limit attack surface area.
+Even with optimizations, a non-virtualized TPM typically takes a few hundred milliseconds to complete the sequence of operations required for signing.
+This is problematic in environments requiring high-frequency operations.
 Alternative hardware security modules or virtualized TPMs may improve on this.
 
 \section{Variations and Future Work}
@@ -804,26 +800,30 @@ First, using a unified kernel image could reduce boot and measurement complexity
 Second, writing a minimal, bespoke kernel module to protect \wcp would avoid the need for intricate SELinux and IMA policies and the associated administrative overhead.
 Each change would reduce the trusted computing base by reducing the amount of configuration that needs to be verified.
 
-If there is serious concern about authenticity across boot cycles, two additional key management strategies are feasible.
+We also considered protecting the TPM-encrypted \pk file as a secret instead of \wcp.
+We view this as a strictly worse option---%
+any sessions with \pk loaded must also be protected, or sessions, and their performance benefits, must be foregone entirely.
+This also rules out the option of storing \pk in the TPM's NVRAM.
+
+If there is serious concern about authenticity across boot cycles, two other key management strategies are feasible.
 Policies can require a check to the boot-count, so \wcp could be reprovisioned on every boot.
-Alternatively, \pk could be reprovisioned on every boot, but this would require remote parties to verify the PCRs to ensure \pk is properly protected
+Alternatively, \pk could be reprovisioned on every boot, but remote parties would need to verify the PCRs to ensure \pk is properly protected
 (and TPM-resident, if that is still desired).
-These options restrict runtime leaks to a single boot cycle, at the cost of increased complexity in policy or key management respectively.
+These options limit runtime leaks to a single boot cycle, at the cost of increased complexity in policy or key management respectively.
 
 While other hardware security modules with similar functionality to the TPM exist, they are not widely available.
 Trusted execution environments (TEEs) are, however, commonly available on enterprise hardware,
-and provide strong memory-based protections.
-TEEs may provide sufficient isolation to justify storing \wcp or \pk directly in protected memory,
+and provide strong memory isolation protections.
+TEEs may be sufficient to justify storing \wcp or \pk directly in protected memory,
 potentially improving performance.
 
-Implementing support for TPM localities on Linux and SELinux (or equivalent) would be a significant step toward hardening our framework.
-By restricting access to TPM localities to certain programs,
-\pk could require a locality accessible only by \tpmsign, and \wcp would not need to be secret.
-However, adversaries capable of corrupting the kernel/SELinux would still be able to work around this.
+Implementing support for TPM localities in SELinux (or developing an equivalent mechanism) would be a significant improvement in hardening our framework.
+By restricting access to TPM localities to specific programs,
+\wcp could require a locality accessible only by \tpmsign under an approved boot.
+This would remove the secrecy requirement for \wcp,
+thus simplifying the SELinux policy and removing the need for EVM and LUKS.
+However, adversaries capable of corrupting the kernel/SELinux would still be able to break this.
 This is our ideal way forward.
-
-
-
 
 %
 % 
