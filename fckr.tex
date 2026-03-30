@@ -311,7 +311,7 @@ Wildcard policies may also be leveraged to allow multiple policies to authorize 
 or to utilize the same policy for different keys, including keys on different devices.
 
 \subsection{Security-Enhanced Linux (SELinux)}
-SELinux \cite{Loscocco:2001:SELinux} provides mandatory access controls on Linux and is available by default in most distributions.
+SELinux \cite{Loscocco:2001:SELinux} provides mandatory access controls on Linux and is integrated into the Linux kernel. 
 Labels added to users, files, and processes determine their permissions according to the SELinux policy installed on the system.
 These permissions can control actions such as reading and writing to certain files (including append-only writes),
 executing programs, inter-process communi\-cation, and opening specific network ports.
@@ -324,7 +324,7 @@ When IMA is enabled in \fix mode, files matched by the IMA policy have their has
 In \appraise mode, IMA prevents protected files from being opened if their contents do not match the associated hash.
 IMA \fix mode can only be enabled when Secure Boot is disabled in the UEFI,
 otherwise \appraise mode is enabled.
-The IMA policy can include various specifications such as file owners, the active user, and whether files are being opened for reading or execution.
+IMA policy can include various specifications such as file owners, the active user, and whether files are being opened for reading or execution.
 
 Signatures can also be used to detect file corruption.
 Allowing hashes to be overwritten in \appraise mode is unsafe, as an adversary may know the expected value.
@@ -363,7 +363,7 @@ Whether a LUKS container or a manual process is used, a decryption key must be k
 Thus, we favor the widespread, easy-to-use LUKS mechanisms.
 
 \section{Motivation}
-We assume an adversary has root privileges.
+We assume an adversary has root privileges on a general purpose Linux system.
 Without our framework, the adversary can read or write any file,
 install kernel modules, dump program memory, modify the boot setup, and reboot the system;
 thus, they can access the TPM and any files necessary for a particular request.
@@ -380,14 +380,14 @@ This is also not currently supported.
 In practice, any entity allowed to access the TPM (e.g. the root adversary) can make requests in place of other entities without distinction, unless manual input is required.
 Any viable automatic option relies on the OS to perform authentication.
 
-We provide a solution by leveraging common security mechanisms.
+We provide a solution to authenticate TPM key usage leveraging existing security concepts.
 If a secret is required to use our key and the secret is well-protected, it authenticates entities by distinguishing those that can and cannot access the secret.
-If integrity of the entities is ensured, only the intended, legitimate entities can use the TPM key with the secret.
+If integrity of the entities is ensured, only the intended, legitimate entities can access the secret and use the key.
 This suggests the secret must only be available (LUKS) when access controls (SELinux) and integrity (IMA, EVM) are being enforced (measured boot).
 Importantly, these protections must apply to root-level users,
-and also prevent alternative means of leaking the secret like installing kernel modules or inspecting program memory.
-Any of our chosen mechanisms could be swapped for an alternative with the same principles.
-This concept properly authenticates entities accessing the key.
+and must prevent alternative means of leaking the secret like installing kernel modules or inspecting program memory.
+This concept properly authenticates entities accessing the key, working around the limited existing integration between the TPM and the OS.
+Any of our chosen mechanisms (including the TPM) could be swapped for an alternative design with the same principles.
 
 \section{Framework}
 In our framework, access to a TPM signing key \pk is restricted to a single program \tpmsign.
@@ -407,9 +407,9 @@ or otherwise find an exploit to read \wcp from memory.
 The relationships of mechanisms in our framework are visually demonstrated in \zcref[S]{fig:framework}.
 
 \begin{figure}
+  \centering
   \include{trust_diagram}
-  \setlength{\abovecaptionskip}{-20pt}
-  \caption{An illustration of our framework.
+  \caption[Illustration of our framework]{An illustration of our framework.
     IMA, SELinux, and EVM protect \tpmsign and \wcp.
     Measurements of those mechanisms are put into TPM PCRs during boot.
     The PCR values must be approved to unlock the LUKS container to access \wcp
@@ -511,7 +511,7 @@ Concerned about an adversary replacing the \tpmsign binary with a malicious vers
 modifying the relevant SELinux labels, we turned to IMA and EVM.
 Further, for our research outside this particular work, we must protect other infrastructure which interacts with
 the \tpmsign binary.
-While SELinux and extensive boot measurements could likely solve these issues,
+While SELinux and more boot-time measurements could likely solve these issues,
 we believe IMA is easy to grasp and adds an additional, more dynamic layer of protection.
 
 \subsection{IMA Policy}
@@ -532,8 +532,8 @@ since all files with that label require an administrator's signature.
 
 The flexibility of IMA policy configuration should make it possible to cover any desired subset of the filesystem
 and ensure the desired level of integrity.
-Complex policies may be able to provide defense on systems where the SELinux state cannot be immutable
-(although this could make the system more difficult to work with than making SELinux state immutable).
+Complex policies may be able to provide defense on systems where the SELinux state cannot be immutable,
+at the risk of increased operational complexity.
 At the least, we recommend including the rules of the available default IMA policies. % TODO : cite default rules page
 
 \subsection{Boot-time and Initramfs Measurements}
@@ -582,6 +582,7 @@ PCR 14 contains measurements of Machine Owner Keys, including those necessary fo
 These measurements are reflected in \zcref[S]{tab:pcr-usage}.
 
 \begin{table}
+  \centering
   \caption{PCR usage at start-up}
   \label{tab:pcr-usage}
   % \footnotesize
@@ -687,7 +688,7 @@ and the signatures should be assigned manually via \verb|setfattr|.
 % TODO : maybe cite something here?
 We set up a LUKS container, nominally \vault, that unlocks with the same PCRs as \wcp.
 Then \wcp must be placed in the \vault.
-The same \texttt{losetup} and \texttt{systemd-cryptenroll} commands also update the PCRs for the container.
+The same \texttt{losetup} and \texttt{systemd-cryptenroll} commands update the PCRs for the container.
 % \begin{minted}{bash}
 \begin{lstlisting}[style=bash]
 fallocate -l 1GB ~/vault.img
@@ -706,9 +707,9 @@ mount /dev/mapper/vault_mapper /mnt/vault
 Our development system uses Fedora 42 with an out-of-the-box kernel.
 This influenced some of our design decisions which may require modification for other distributions.
 
-Many distributions use a Microsoft-signed boot shim to facilitate Secure Boot support \cite{rhboot:2026:shim}.
-The shim contains its own certificate database to check signatures, so
-the UEFI measures the shim, and the shim measures the real bootloader (e.g. GRUB).
+Many Linux distributions use shim, a simple Microsoft-signed bootloader that facilitates Secure Boot support \cite{rhboot:2026:shim}.
+Shim contains its own certificate database to check signatures, so
+the UEFI measures shim, and shim measures the real bootloader (e.g. GRUB).
 This does not affect the security of our framework, as the chain of trust remains intact.
 Alternatively, administrators may manually sign the bootloader or use a unified kernel image (UKI) \cite{gentoo_wiki_secure_boot,gentoo_wiki_secure_boot_grub}.
 
@@ -735,8 +736,7 @@ We experimentally demonstrated the following features of this setup:
         \begin{itemize}
           \item The LUKS container will not open without a password, and \wcp is inaccessible.
                 Thus, \wcp cannot be relabelled.
-          \item If the container is manually unlocked and \wcp is available, the PCRs specified in \wcp will not match and \pk will not be usable.
-                Thus, an adversary must maintain the contents of \wcp until the system is rebooted to an approved state.
+          \item If the container is manually unlocked so \wcp is available, the PCRs will not match \wcp and \pk will not be usable.
           \item It is not possible to corrupt the IMA policy, because custom IMA policies require a signature.
         \end{itemize}
   \item When the system is booted in an approved state (IMA and SELinux working as intended), it is not possible to:
