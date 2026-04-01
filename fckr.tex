@@ -530,8 +530,7 @@ The first rule effectively prevents an adversary from relabeling a malicious bin
 since all files with that label require an administrator's signature.
 % ! TODO : consider removing second rule?
 
-The flexibility of IMA policy configuration should make it possible to cover any desired subset of the filesystem
-and ensure the desired level of integrity.
+The flexibility of IMA policy configuration should make it possible to ensure integrity on any desired subset of the filesystem.
 Complex policies may be able to provide defense on systems where the SELinux state cannot be immutable,
 at the risk of increased operational complexity.
 At the least, we recommend including the rules of the available default IMA policies. % TODO : cite default rules page
