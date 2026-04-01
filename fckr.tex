@@ -817,12 +817,14 @@ and provide strong memory isolation protections.
 TEEs may be sufficient to justify storing \wcp or \pk directly in protected memory,
 potentially improving performance.
 
-Implementing support for TPM localities in SELinux (or developing an equivalent mechanism) would be a significant improvement in hardening our framework.
-By restricting access to TPM localities to specific programs,
-\wcp could require a locality accessible only by \tpmsign under an approved boot.
-This would remove the secrecy requirement for \wcp,
-thus simplifying the SELinux policy and removing the need for EVM and LUKS.
-However, adversaries capable of corrupting the kernel/SELinux would still be able to break this.
+TPM localities or resettable PCRs could be leveraged to significantly harden our framework.
+Either option would remove the secrecy requirement for \wcp,
+simplifying the SELinux policy and removing the need for EVM and LUKS.
+If TPM localities were protected by SELinux (or equivalent),
+\wcp could require a locality only accessible by \tpmsign under an approved boot.
+Alternatively, the kernel could control resettable PCR 16, and include details about the program currently accessing the TPM in PCR 16.
+Then the PCR 16 value for \tpmsign could be included in \wcp.
+Unfortunately, adversaries capable of corrupting the kernel/SELinux at runtime could still break either strategy.
 This is our ideal way forward.
 
 %
