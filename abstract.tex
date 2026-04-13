@@ -1,13 +1,11 @@
 \begin{abstract}
   Modern security relies heavily on public key cryptography,
   and it is necessary to protect private keys, and secrets in general, from attackers.
-  While multiple mechanisms exist to prevent secrets from being trivially read off the filesystem,
-  against a highly-capable adversary it is ideal to store secrets outside of main memory.
-  The TPM 2.0 is built into modern x86 hardware and is designed to be used for exactly this.
-  However, a lack of tight integration between the TPM and the operating system makes it difficult to protect secrets with high availability needs from arbitrary access.
-  % fails to protect keys stored in the TPM 2.0 from being used by arbitrary users, other than by fully restricting access to the TPM.
-  Using only existing infrastructure: SELinux, IMA, and LUKS containers,
-  we develop a stronger protection mechanism for TPM-stored secrets so access can be restricted to a specific program or user,
+  Against a highly-capable adversary it is ideal to store secrets outside of main memory,
+  which is easy on general purpose systems with the now widely-available Trusted Platform Module (TPM) 2.0.
+  However, the lack of integration between the TPM and the OS makes protecting secrets with automated availability needs difficult.
+  Using only existing mechanisms available on Linux: SELinux, Integrity Measurement Architecture (IMA), Extended Verification Module (EVM), and Linux Unified Key Setup (LUKS),
+  we develop a strategy to authenticate specific OS entities to protect TPM-stored secrets,
   without limiting access to the TPM in general.
 
   \iflncs\keywords{First keyword \and Second keyword \and Another keyword.}\fi
