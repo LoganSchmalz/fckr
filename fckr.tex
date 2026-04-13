@@ -364,7 +364,7 @@ we favor the widespread, easy-to-use LUKS mechanisms over a manual decryption pr
 We assume an adversary has root privileges on a general purpose Linux system.
 Without our framework, the adversary can read or write any file,
 install kernel modules, dump program memory, modify the boot setup, and reboot the system;
-thus, they can access the TPM and any files necessary for a particular request.
+thus, they can access the TPM and any files necessary to make a particular request.
 We assume the adversary has no physical access to the machine, so the hardware and firmware are trustworthy.
 We want to avoid artificially restricting access to the TPM or other system components.
 
@@ -376,15 +376,15 @@ However, the TPM trusts the OS to control localities, and there is no existing m
 Alternatively, one of the resettable PCRs, controlled by the OS, could indicate the entity currently accessing the key.
 This is also not currently supported.
 In practice, any entity allowed to access the TPM (e.g. the root adversary) can make requests in place of other entities without distinction, unless manual input is required.
-Any viable automatic option relies on the OS to perform authentication.
+Any viable automated option relies on the OS to perform authentication.
 
-We provide a solution to authenticate TPM key usage leveraging existing security concepts.
+We provide a solution to authenticate TPM key usage leveraging existing security mechanisms.
 If a secret is required to use our key and the secret is well-protected, it authenticates entities by distinguishing those that can and cannot access the secret.
-If integrity of the entities is ensured, only the intended, legitimate entities can access the secret and use the key.
+If the entities have integrity, only the intended, legitimate entities can access the secret to use the key.
 This suggests the secret must only be available (LUKS) when access controls (SELinux) and integrity (IMA, EVM) are being enforced (measured boot).
 Importantly, these protections must apply to root-level users,
 and must prevent alternative means of leaking the secret like installing kernel modules or inspecting program memory.
-This concept properly authenticates entities accessing the key, working around the limited existing integration between the TPM and the OS.
+This design ensures the OS authenticates entities accessing the key, working around the lacking OS--TPM integration.
 Any of our chosen mechanisms (including the TPM) could be swapped for an alternative design with the same principles.
 
 \section{Framework}
@@ -397,11 +397,11 @@ EVM and SELinux protect the SELinux labels on \tpmsign and \wcp.
 
 The wildcard policy \wcp is the secret used to access \pk.
 \wcp is stored within a LUKS container that unlocks during boot when our framework is enabled.
-When the system is booted into an unapproved state, \wcp is encrypted inside the LUKS container and cannot be accessed.
+When the system is booted into an unapproved state, \wcp is sealed in the LUKS container and cannot be accessed.
 Additionally, \wcp itself requires the PCRs to indicate the system booted with our framework.
 If the container is unlocked manually while \wcp is unprotected, the PCRs will indicate such, so \pk remains unusable.
 Thus, for an adversary to access \wcp, they must exploit the running system to bypass the IMA or SELinux policies,
-or otherwise find an exploit to read \wcp from memory.
+or otherwise find an exploit to leak \wcp from memory.
 The relationships of mechanisms in our framework are visually demonstrated in \zcref[S]{fig:framework}.
 
 \begin{figure}
@@ -409,9 +409,8 @@ The relationships of mechanisms in our framework are visually demonstrated in \z
   \include{trust_diagram}
   \caption[Illustration of our framework]{An illustration of our framework.
     IMA, SELinux, and EVM protect \tpmsign and \wcp.
-    Measurements of those mechanisms are put into TPM PCRs during boot.
-    The PCR values must be approved to unlock the LUKS container to access \wcp
-    and for \wcp to allow usage of \pk through \tpmsign.
+    TPM PCRs store measurements of those mechanisms
+    and must be correct for \tpmsign to use \wcp.
   }
   \ifacm
     \Description[Illustration of framework.]{
@@ -612,8 +611,8 @@ After rebooting the system with our \initramfs changes,
 we set up \wcp and \pk.
 
 \subsubsection{Policy Creation}
+We create administrator keys for approving wildcard policies with OpenSSL.
 For our development system, we have the adminstrator's private key available---in a real setup, it should be held on a different machine.
-We create the administrator keys with OpenSSL.
 % \begin{minted}{bash}
 \begin{lstlisting}[style=bash]
 openssl genrsa -out policy_key_private.pem 2048
@@ -663,11 +662,9 @@ The important files here are \verb|key.pub| and \verb|key.priv|, the public and 
 We also create a PEM-formatted copy of the public key for sharing.
 
 \subsubsection{Using the Signing Key}
-We make \tpmsign the only program allowed to access
-\wcp (\pcrpolicy) by giving it the \exect label.
-It attempts to reload \pk from a session;
-otherwise, it re-generates the primary key and loads \pk from its file.
-After loading, every use of \pk must follow the standard protocol to authorize key usage with the wildcard policy \cite{tpm2-software:2026:policyauthorize}.
+We give the \exect label to \tpmsign, the only program allowed to access \wcp.
+It attempts to reload \pk from a session or re-generates the primary key and loads \pk from its file.
+After loading, every use of \pk must follow the standard protocol to authorize key usage with \wcp \cite{tpm2-software:2026:policyauthorize}.
 
 \subsection{Using EVM on \wcp}
 After giving \wcp the \filet label,
@@ -681,11 +678,11 @@ This makes it impossible to change the SELinux labels, file owners, or UNIX perm
 In a real environment, the private key should be held on a separate machine
 and the signatures should be assigned manually via \verb|setfattr|.
 
-\subsection{LUKS Container}
+\subsection{LUKS Setup}
 % TODO : maybe cite something here?
 We set up a LUKS container, nominally \vault, that unlocks with the same PCRs as \wcp.
 Then \wcp must be placed in the \vault.
-The same \texttt{losetup} and \texttt{systemd-cryptenroll} commands update the PCRs for the container.
+Steps 3--5 also update the PCRs for the container.
 % \begin{minted}{bash}
 \begin{lstlisting}[style=bash]
 fallocate -l 1GB ~/vault.img
@@ -702,7 +699,7 @@ mount /dev/mapper/vault_mapper /mnt/vault
 
 \subsection{Deployment Considerations}\label{sec:implementation-details}
 Our development system uses Fedora 42 with an out-of-the-box kernel.
-This influenced some of our design decisions which may require modification for other distributions.
+This influenced some of our decisions which may require modification for other distributions.
 
 Many Linux distributions use shim, a simple Microsoft-signed bootloader that facilitates Secure Boot support \cite{rhboot:2026:shim}.
 Shim contains its own certificate database to check signatures, so
@@ -710,10 +707,10 @@ the UEFI measures shim, and shim measures the real bootloader (e.g. GRUB).
 This does not affect the security of our framework, as the chain of trust remains intact.
 Alternatively, administrators may manually sign the bootloader or use a unified kernel image (UKI) \cite{gentoo_wiki_secure_boot,gentoo_wiki_secure_boot_grub}.
 
-While PCR 11 is unused and available on Fedora when using the GRUB bootloader, only the usage of PCRs 0--7 is defined by TCG standards.
+While PCR 11 is free on Fedora when using the GRUB bootloader, only the usage of PCRs 0--7 is defined by TCG standards.
 Usage of PCRs 8--15 may vary for other boot setups \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP,UAPILinuxTPMPCR}.
 
-We found that attempting to run EVM without HMAC support prevents Fedora from booting due to its reliance on dynamically-modified files.
+We found enabling EVM without HMAC support prevents Fedora from booting due to its reliance on dynamically-modified files.
 As mentioned in \zcref[S]{sec:evm}, this means EVM may replace non-portable signatures with HMACs, allowing metadata to be modified.
 In this case, \textbf{portable} signatures are absolutely necessary.
 
@@ -763,12 +760,12 @@ We experimentally demonstrated the following features of this setup:
 % \end{table*}
 % \end{comment}
 
-While the LUKS container should protect \wcp (or a password) sufficiently,
+While the LUKS container should protect \wcp or a password sufficiently,
 it is sometimes necessary to manually unlock the LUKS container when the system is in an unapproved state to accomodate a system update.
-Since it is still beneficial to know \pk cannot be used at that moment,
-\wcp also checking PCRs provides some extra assurance that if \pk is used, then the system booted in an approved state.
+It is still beneficial to know \pk cannot be used at that moment,
+so having \wcp also check PCRs instead of using a password provides some extra assurance.
 Note that \wcp is not necessarily unprotected during an unapproved boot, as the IMA and SELinux policies may still be approved but another part of the system may have changed.
-To exploit a lapse in protection caused by a manual unlock, an adversary must remember the contents of \wcp until the system is rebooted to an approved state.
+To exploit a lapse in protection caused by a manual unlock, an adversary must remember the contents of \wcp until the system is rebooted to the approved state.
 
 There are three primary limitations of this secret protection scheme.
 The first is protecting a large subset of a system with IMA can make the system annoying to change or update.
@@ -785,7 +782,7 @@ but \tpmsign is short-lived to limit opportunity for such attacks.
 Thus, we believe bypassing our framework on an otherwise uncorrupted, up-to-date kernel has equivalent difficulty to finding at least one zero-day exploit.
 
 The final limitation is the speed of the TPM.
-Even with optimizations, a non-virtualized TPM typically takes a few hundred milliseconds to complete the sequence of operations required for signing.
+Even with optimizations, a non-virtualized TPM typically takes a few hundred milliseconds to produce an RSA signature (elliptic curve signatures are usually faster).
 This is problematic in environments requiring high-frequency operations.
 Alternative hardware security modules or virtualized TPMs may improve on this.
 
@@ -906,6 +903,9 @@ The \verb|typeattribute|/\verb|typeattributeset| declaration is necessary to det
 via logical expressions like \verb|not|, \verb|and|, \verb|or|, etc.
 This is because, in CIL policy, rules (\verb|allow|, \verb|deny|, etc.) must take an identifier in the first and second arguments.
 In our policy, this allows us to deny reads from every domain except \domaint.
+
+% TODO: discussion about unconfined_run_to
+% TODO: Discussion about neverallow rules
 
 \ifacm\iftwocolumn\balance\fi\fi
 \section{Setting up IMA}
