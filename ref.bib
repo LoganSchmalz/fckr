@@ -1,64 +1,169 @@
+@phdthesis{Fruhwirth:LUKS:2005,
+  title={New Methods in Hard Disk Encryption},
+  author={Clemens Fruhwirth},
+  school={Vienna University of Technology},
+  year={2005},
+  url={https://clemens.endorphin.org/nmihde/nmihde-A4-ds.pdf}
+}
+
+@article{Gomez:RESEKRA:2022,
+  title = {{RESEKRA}: Remote Enrollment Using {SEaled} Keys for Remote Attestation},
+  author = {G\'{o}mez-Mar\'{i}n, E. and Parrilla, L. and Mauro, G. and Escobar-Molero, A. and Morales, D. P. and Castillo, E.},
+  journal = {Sensors},
+  volume = {22},
+  number = {13},
+  pages = {5060},
+  year = {2022},
+  month = {Jul},
+  doi = {10.3390/s22135060},
+  note = {PMID: 35808554; PMCID: PMC9269829}
+}
+
+@inproceedings{Kim:hTPM-Hybrid-TPM:2019,
+  author    = {Kim, Yongjin and Kim, Evan},
+  title     = {hTPM: Hybrid Implementation of Trusted Platform Module},
+  year      = {2019},
+  isbn      = {9781450368407},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  url       = {https://doi.org/10.1145/3338511.3357348},
+  doi       = {10.1145/3338511.3357348},
+  abstract  = {Hardware-based TPM provides hardware-backed security solutions and a root of trust for various mission critical applications. However, hardware-based TPM has several intrinsic problems such as extremely low performance, off-chip security vulnerability, and a lack of incident response agility. In the upcoming Quantum computing era, it is critical to provide Quantum-Resistant (QR) cryptography functions without harming performance. Unfortunately, hardware-based TPM's rigid hardware and software architecture model makes it extremely difficult for hardware-based TPM to transition to accommodate future QR cryptographic systems. On the other hand, software-based TPMs (e.g., firmware-based TPM) provide a CPU-based, on-chip security solution. They utilize low-level on-chip primitives offered by chipsets such as ARM TrustZone or Intel Software Guard Extensions (SGX) to build a system with a high-level of trust computing environment. A software-based TPM solution provides higher performance, on-chip security, and incident response agility. However, it is lacking in hardware-backed protection and several vital features such as secure key storage, robustness against side-channel attacks, true random number generation, among others. In addition, its implementation is highly dependent on low-level primitives provided by each hardware vendor, which makes it difficult for it to be provided as a generalized solution. In this paper, we propose hybrid-TPM (hTPM), which fully utilizes the advantages of a hardware-based TPM and diminishes a hardware-based TPM's weaknesses through software-based TPM solutions inside a secure container, e.g., Virtualization-Based Security (VBS).We implemented hTPM as a fully dual mode TPM, i.e., giving end-users full control in choosing between a hardware TPM mode and a software TPM mode based on their needs. We performed and will provide a full risk analysis of the proposed hTPM to show how to best overcome security challenges in realizing hTPM. Finally, we provide a performance analysis of our proposal to show the drastic improvements in cryptographic operations.},
+  booktitle = {Proceedings of the 1st ACM Workshop on Workshop on Cyber-Security Arms Race},
+  pages     = {3–10},
+  numpages  = {8},
+  keywords  = {key management, quantum-resistance, root of trust, trusted platform module},
+  location  = {London, United Kingdom},
+  series    = {CYSARM'19}
+}
+
+
+@inproceedings{Haas:Linux-Boot-Integrity:2024,
+  author    = {Haas, Robert and Pirker, Martin},
+  title     = {The State of Boot Integrity on Linux - a Brief Review},
+  year      = {2024},
+  isbn      = {9798400717185},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  url       = {https://doi.org/10.1145/3664476.3670910},
+  doi       = {10.1145/3664476.3670910},
+  abstract  = {With the upcoming generational change from Windows 10 to Windows 11, the Trusted Platform Module as a security supporting component will be a requirement for every common PC. While the TPM has seen use with some applications already, its near future ubiquitous presence in all PCs motivates an updated review of TPM supporting software. This paper focuses on the software ecosystem that supports secure boot, a chain of measurements for integrity assessments, and challenges in remote attestation. A brief reflection on the state of the various projects gives a rough overview, but is not an exhaustive and in-depth survey. Still, this short paper contributes to the ongoing adoption and reflection of TPM&nbsp;v2’s features and opportunities.},
+  booktitle = {Proceedings of the 19th International Conference on Availability, Reliability and Security},
+  articleno = {154},
+  numpages  = {6},
+  keywords  = {Linux boot process, Trusted computing, Trusted platform module},
+  location  = {Vienna, Austria},
+  series    = {ARES '24}
+}
+
+@inproceedings{Pecholt:CoCoTPM-Secure-vTPM:2022,
+  author    = {Pecholt, Joana and Wessel, Sascha},
+  title     = {CoCoTPM: Trusted Platform Modules for Virtual Machines in Confidential Computing Environments},
+  year      = {2022},
+  isbn      = {9781450397599},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  url       = {https://doi.org/10.1145/3564625.3564648},
+  doi       = {10.1145/3564625.3564648},
+  abstract  = {Cloud computing has gained popularity and is increasingly used to process sensitive and valuable data. This development necessitates the protection of data from the cloud provider and results in a trend towards confidential computing. Hardware-based technologies by AMD, Intel and Arm address this and allow the protection of virtual machines and the data processed in them. Unfortunately, these hardware-based technologies do not offer a unified interface for necessary tasks like secure key generation and usage or secure storage of integrity measurements. Moreover, these technologies are oftentimes limited in functionality especially regarding remote attestation. On the other hand, a unified interface is widely used in the area of bare-metal systems to provide these functionalities: the Trusted Platform Module (TPM). In this paper, we present a concept for an architecture providing TPM functionalities for virtual machines in confidential computing environments. We name it Confidential Computing Trusted Platform Module, short CoCoTPM. Different from common approaches for virtual machines, host and hypervisor are not trusted and excluded from the trusted computing base. Our solution is compatible with existing mechanisms and tools utilizing TPMs and thus allows the protection of virtual machines in confidential computing environments without further adaptations of these mechanisms and tools. This includes storage of integrity measurements during a measured boot and for the integrity measurement architecture, full disk encryption bound to these measurements, usage of an openssl provider for TLS connections and remote attestation. We show how our concept can be applied to different hardware-specific technologies and implemented our concept for AMD SEV and SEV-SNP.},
+  booktitle = {Proceedings of the 38th Annual Computer Security Applications Conference},
+  pages     = {989–998},
+  numpages  = {10},
+  keywords  = {Virtualization, TPM, System Security, Remote Attestation, Measured Boot, Confidential Computing},
+  location  = {Austin, TX, USA},
+  series    = {ACSAC '22}
+}
+
+@inproceedings{Kuhn:Realizing-Property-Based-Attestation:2007,
+  author    = {K\"{u}hn, Ulrich and Selhorst, Marcel and St\"{u}ble, Christian},
+  title     = {Realizing property-based attestation and sealing with commonly available hard- and software},
+  year      = {2007},
+  isbn      = {9781595938886},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  url       = {https://doi.org/10.1145/1314354.1314368},
+  doi       = {10.1145/1314354.1314368},
+  abstract  = {The authenticated boot process introduced by the Trusted Computing Group (TCG) uses binary measurements, i.e., hashes of executables, to give an indication of which software configuration runs on a given computing platform. As the binary measurements change with any software update, sealed data becomes unavailable, too. To solve this and other problems regarding binary measurements, the concept ofproperty-based attestation has been introduced.In this paper we show how to realize both property-based attestation and property-based sealing using existing TCG-enabled hard- and software. The main idea is that an enhanced boot loader translates between binary measurements and properties, allowing to attest properties of unmodified operating systems loaded. Moreover, applications running on top of this operating system can use existing mechanisms, e.g., an existing Trusted Software Stack (TSS) implementation, to seal data to properties instead of binary hash valuesOne cornerstone of our proposal is the ability to also revoke the translation of certain binary measurements into properties in case of identified security problems. Our proposal is ideally suited for enterprise environments having a centralized IT-management infrastructure and scales well with the number of participating clients.},
+  booktitle = {Proceedings of the 2007 ACM Workshop on Scalable Trusted Computing},
+  pages     = {50–57},
+  numpages  = {8},
+  keywords  = {property-based attestation, property-based sealing, trusted computing},
+  location  = {Alexandria, Virginia, USA},
+  series    = {STC '07}
+}
+
+@inproceedings{Jang:SeCReT:2015,
+  title     = {SeCReT: Secure Channel between Rich Execution Environment and Trusted Execution Environment},
+  author    = {Jang, Jinsoo and Kong, Sunjune and Kim, Minsu and Kim, Daegyeong and Kang, Brent},
+  year      = {2015},
+  month     = {01},
+  pages     = {},
+  doi       = {10.14722/ndss.2015.23189},
+  booktitle = {Network and Distributed System Security Symposium},
+  url       = {https://www.ndss-symposium.org/ndss2015/ndss-2015-programme/secret-secure-channel-between-rich-execution-environment-and-trusted-execution-environment/}
+}
+
 @manual{tpm2-software:2026:policyauthorize,
   author       = {{tpm2-software community}},
   month        = {February},
   year         = {2026},
   organization = {tpm2-software},
   title        = {tpm2\_policyauthorize(1) tpm2-tools | General Commands Manual},
-  url          = {https://github.com/tpm2-software/tpm2-tools/blob/master/man/tpm2_policyauthorize.1.md},
+  url          = {https://github.com/tpm2-software/tpm2-tools/blob/master/man/tpm2_policyauthorize.1.md}
 }
   note         = {GitHub repository}
 
 @manual{IBM:IMA-Policy,
-  author       = {{IBM}},
-  keywords     = {security, tpm, ima, linux, integrity},
-  year         = {2023},
-  title        = {IMA Policy --- IMA 1.0 Documentation},
-  url          = {https://ima-doc.readthedocs.io/en/latest/ima-policy.html#built-in-policy-rules},
-  accessed     = {2026-02-09}
+  author   = {{IBM}},
+  keywords = {security, tpm, ima, linux, integrity},
+  year     = {2023},
+  title    = {IMA Policy --- IMA 1.0 Documentation},
+  url      = {https://ima-doc.readthedocs.io/en/latest/ima-policy.html#built-in-policy-rules},
+  accessed = {2026-02-09}
 }
 
 @manual{IBM:IMA-utilities-evmctl,
-  author       = {{IBM}},
-  keywords     = {security, tpm, ima, linux, integrity},
-  year         = {2023},
-  title        = {HOWTO --- IMA 1.0 Documentation},
-  url          = {https://ima-doc.readthedocs.io/en/latest/ima-utilities.html},
-  accessed     = {2026-02-09}
+  author   = {{IBM}},
+  keywords = {security, tpm, ima, linux, integrity},
+  year     = {2023},
+  title    = {HOWTO --- IMA 1.0 Documentation},
+  url      = {https://ima-doc.readthedocs.io/en/latest/ima-utilities.html},
+  accessed = {2026-02-09}
 }
 
 @manual{IBM:IMA-Documentation,
-  author       = {{IBM}},
-  keywords     = {security, tpm, ima, linux, integrity},
-  year         = {2023},
-  title        = {IMA and EVM Concepts --- IMA 1.0 Documentation},
-  url          = {https://ima-doc.readthedocs.io/en/latest/ima-concepts.html},
-  accessed     = {2026-02-09}
+  author   = {{IBM}},
+  keywords = {security, tpm, ima, linux, integrity},
+  year     = {2023},
+  title    = {IMA and EVM Concepts --- IMA 1.0 Documentation},
+  url      = {https://ima-doc.readthedocs.io/en/latest/ima-concepts.html},
+  accessed = {2026-02-09}
 }
 
 @inproceedings{Sailer:2004:Integrity-Measurement-Architecture,
-author = {Sailer, Reiner and Zhang, Xiaolan and Jaeger, Trent and van Doorn, Leendert},
-title = {{Design and implementation of a TCG-based integrity measurement architecture}},
-year = {2004},
-publisher = {USENIX Association},
-address = {USA},
-abstract = {We present the design and implementation of a secure integrity measurement system for Linux. All executable content that is loaded onto the Linux system is measured before execution and these measurements are protected by the Trusted Platform Module (TPM) that is part of the Trusted Computing Group (TCG) standards. Our system is the first to extend the TCG trust measurement concepts to dynamic executable content from the BIOS all the way up into the application layer. In effect, we show that many of the Microsoft NGSCB guarantees can be obtained on today's hardware and today's software and that these guarantees do not require a new CPU mode or operating system but merely depend on the availability of an independent trusted entity, a TPM for example. We apply our trust measurement architecture to a web server application where we show how our system can detect undesirable invocations, such as rootkit programs, and that our measurement architecture is practical in terms of the number of measurements taken and the performance impact of making them.},
-booktitle = {Proceedings of the 13th Conference on USENIX Security Symposium - Volume 13},
-pages = {16},
-numpages = {1},
-location = {San Diego, CA},
-series = {SSYM'04}
+  author    = {Sailer, Reiner and Zhang, Xiaolan and Jaeger, Trent and van Doorn, Leendert},
+  title     = {{Design and implementation of a TCG-based integrity measurement architecture}},
+  year      = {2004},
+  publisher = {USENIX Association},
+  address   = {USA},
+  abstract  = {We present the design and implementation of a secure integrity measurement system for Linux. All executable content that is loaded onto the Linux system is measured before execution and these measurements are protected by the Trusted Platform Module (TPM) that is part of the Trusted Computing Group (TCG) standards. Our system is the first to extend the TCG trust measurement concepts to dynamic executable content from the BIOS all the way up into the application layer. In effect, we show that many of the Microsoft NGSCB guarantees can be obtained on today's hardware and today's software and that these guarantees do not require a new CPU mode or operating system but merely depend on the availability of an independent trusted entity, a TPM for example. We apply our trust measurement architecture to a web server application where we show how our system can detect undesirable invocations, such as rootkit programs, and that our measurement architecture is practical in terms of the number of measurements taken and the performance impact of making them.},
+  booktitle = {Proceedings of the 13th Conference on USENIX Security Symposium - Volume 13},
+  pages     = {16},
+  numpages  = {1},
+  location  = {San Diego, CA},
+  series    = {SSYM'04}
 }
 
 @inproceedings{Loscocco:2001:SELinux,
-author = {Loscocco, Peter and Smalley, Stephen},
-title = {Integrating Flexible Support for Security Policies into the Linux Operating System},
-year = {2001},
-isbn = {1880446103},
-publisher = {USENIX Association},
-address = {USA},
-booktitle = {Proceedings of the FREENIX Track: 2001 USENIX Annual Technical Conference},
-pages = {29–42},
-numpages = {14}
+  author    = {Loscocco, Peter and Smalley, Stephen},
+  title     = {Integrating Flexible Support for Security Policies into the Linux Operating System},
+  year      = {2001},
+  isbn      = {1880446103},
+  publisher = {USENIX Association},
+  address   = {USA},
+  booktitle = {Proceedings of the FREENIX Track: 2001 USENIX Annual Technical Conference},
+  pages     = {29–42},
+  numpages  = {14}
 }
 
 @manual{rhboot:2026:shim,
@@ -69,7 +174,7 @@ numpages = {14}
   year         = {2026},
   organization = {rhboot},
   title        = {shim: First-stage UEFI bootloader},
-  url          = {https://github.com/rhboot/shim},
+  url          = {https://github.com/rhboot/shim}
 }
   note         = {GitHub repository}
 
@@ -92,7 +197,7 @@ numpages = {14}
   version      = {1.0},
   url          = {https://uapi-group.org/specifications/specs/linux_tpm_pcr_registry/},
   urldate      = {2025-02-05},
-  organization = {User-API Group},
+  organization = {User-API Group}
 }
 note         = {Initial Release}
 
@@ -113,7 +218,7 @@ note         = {Initial Release}
   year      = {2015},
   publisher = {Apress},
   address   = {Berkeley, CA},
-  isbn      = {978-1-4302-6583-2},
+  isbn      = {978-1-4302-6583-2}
 }
 
 @manual{Trusted-Computing-Group:2025:TCG-TPM-2.0-Part0-Introduction,
