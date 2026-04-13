@@ -516,25 +516,22 @@ While SELinux with more boot-time measurements may be sufficient,
 we believe IMA is easy to grasp and adds an additional, more dynamic layer of protection.
 
 \subsection{IMA Policy}
-IMA protects the integrity of \tpmsign binary and relevant files.
-Our policy imitates the default \verb|tcb| and \verb|appraise_tcb| policies \cite{IBM:IMA-Policy},
-then we include the following lines at the beginning:
+Our IMA policy imitates the default \verb|tcb| and \verb|appraise_tcb| policies \cite{IBM:IMA-Policy},
+then we include the following lines at the beginning to protect the \tpmsign binary and relevant files:
 % \begin{minted}{bash}
 \begin{lstlisting}[style=ima-policy]
 appraise obj_type=tpm_sign_exec_t appraise_type=imasig
 appraise obj_type=tpm_sign_files_t appraise_type=imasig
 \end{lstlisting}
 % \end{minted}
-We require signatures for these files with \verb|appraise_type=imasig|,
-which is stronger than only requiring hashes.
-The first rule effectively prevents an adversary from relabeling a malicious binary to \exect,
+We require signatures with \verb|appraise_type=imasig|
+to effectively prevent giving the \exect label to a malicious binary,
 since all files with that label require an administrator's signature.
-% ! TODO : consider removing second rule?
 
-The flexibility of IMA policy configuration should make it possible to ensure integrity on any desired subset of the filesystem.
+IMA policy configuration should be flexible enough to ensure integrity on any desired subset of the filesystem.
 Complex policies may be able to provide defense on systems where the SELinux state cannot be immutable,
 at the risk of increased operational complexity.
-At the least, we recommend including the rules of the available default IMA policies. % TODO : cite default rules page
+At the least, we recommend including the rules of the available default IMA policies \cite{IBM:IMA-Policy}.
 
 \subsection{Boot-time and Initramfs Measurements}
 We add a script to \initramfs that measures the IMA and SELinux policies
