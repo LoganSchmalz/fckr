@@ -826,6 +826,34 @@ Then the PCR 16 value for \tpmsign could be included in \wcp.
 Unfortunately, adversaries capable of corrupting the kernel/SELinux at runtime could still break either strategy.
 This is our ideal way forward.
 
+\section{Related Work}
+Haas and Pirker \cite{Haas:Linux-Boot-Integrity:2024} provide a broader overview of the Linux measured boot process.
+Their work is supplemental to our brief background, explaining how various Linux boot setups interact with Secure Boot,
+as well as referencing useful tools.
+
+K\"uhn et al. \cite{Kuhn:Realizing-Property-Based-Attestation:2007} propose a measured boot strategy indicating the existence of good properties rather than strict binary measurement.
+Their technique could improve flexibility of our boot measurements.
+
+CoCoTPM \cite{Pecholt:CoCoTPM-Secure-vTPM:2022} develops secure virtualized TPMs.
+For setups utilizing TEEs that rely on TPMs, CoCoTPM provides a flexible and robust solution.
+
+Hybrid TPMs \cite{Kim:hTPM-Hybrid-TPM:2019} improve performance over discrete/firmware TPMs,
+which would fix a limitation of our framework.
+
+SeCReT \cite{Jang:SeCReT:2015} establishes a secure communication channel between the ARM TrustZone TEE and the rich execution environment.
+To protect session keys, they make minor modifications to the Linux kernel to flush keys from memory and protect page accesses.
+This strategy is potentially adaptable to our framework.
+
+In RESEKRA \cite{Gomez:RESEKRA:2022}
+a third-party verifies the IMA measurement log and corresponding PCR to determine runtime integrity of programs on a system,
+and signs new wildcard policies when the measurement log updates.
+% As verifiers should not share their wildcard policy signing keys, each verifier will require its own corresponding private key on the edge system.
+% In addition, the heavy TPM-based attestation process must be performed for every update, sacrificing even more performance than our framework.
+While RESEKRA presents a valuable technique, it does not address our direct concern that a malicious entity,
+through exploits undetected by IMA, may use the wildcard policy to sign falsified data.
+
+\section{Conclusion}
+
 %
 % 
 % ---- Bibliography ----
