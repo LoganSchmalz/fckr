@@ -220,25 +220,26 @@ In contrast, large-scale systems such as web servers handle thousands of request
 In such settings, keys must be both highly available and strongly protected.
 
 A root-level compromise to a system is often catastrophic,
-and systems are designed to prevent such events.
+and systems are setup to prevent such events.
 Despite best practices, adversaries sometimes gain root capabilities.
 This raises a critical question: how can secrets such as private keys be protected even from a root-level attacker, while remaining usable by legitimate services?
 
-The Trusted Platform Module (TPM) 2.0 can store keys and other secrets outside of main memory so they are never exposed,
+The Trusted Platform Module (TPM) 2.0 can store and use keys outside of main memory so they are never exposed,
 and supports authorization mechanisms to access them.
 However, it lacks integration with OS concepts such as users or programs.
 When manual authorization is infeasible,
 the TPM has no built-in mechanism that meaningfully \textit{authenticates} OS entities to restrict key usage.
 At the same time, the TPM supports measured boot which establishes firmware and software integrity.
-Thus, it is possible to ensure proper authentication mechanisms are enforced at the OS level, before allowing keys to be used.
+Thus, it is possible to ensure proper authentication is enforced at the OS level, before allowing keys to be used.
 
 % TODO : we present a general methodology and demonstrate how to implement it with...?
 In this work, we demonstrate how to combine 
 Security-Enhanced Linux (SELinux), the Linux Integrity Measurement Architecture (IMA),
-the Extended Verification Module (EVM), and Linux Unified Key Setup (LUKS) containers with
+the Extended Verification Module (EVM), and Linux Unified Key Setup (LUKS) with
 measured boot and TPM policy authorization to enforce fine-grained access control to TPM-resident secrets.
-We describe the required SELinux, IMA, and EVM configurations, boot-time measurements, LUKS setup, and TPM configuration necessary to achieve this.
-Finally, we discuss limitations of current TPM integration and note that deeper kernel support leveraging TPM localities or resettable PCRs could enable stronger future designs.
+% We describe the required SELinux, IMA, and EVM configurations, boot-time measurements, LUKS setup, and TPM configuration necessary to achieve this.
+We discuss variations and limitations of our setup,
+and note that deeper kernel support leveraging existing TPM features could enable stronger future designs.
 
 \section{Background}
 Our framework requires careful implementation of several mechanisms.
