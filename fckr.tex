@@ -446,71 +446,74 @@ The relationships of mechanisms in our framework are visually demonstrated in \z
 
 Our SELinux policy establishes three types:
 \domaint for the \tpmsign executing domain, \exect for the \tpmsign executable, and \filet for protected files.
+We make \domaint unconfined because we trust \tpmsign, but restricting its permissions is reasonable.
+We also allow the \verb|unconfined_t| domain to transition to \domaint,
+but this should be restricted to specific, trustworthy domains on non-development systems.
 % \begin{minted}{text}
 \begin{lstlisting}[style=selinux-policy]
 type tpm_sign_t; type tpm_sign_exec_t;
 application_domain(tpm_sign_t, tpm_exec_t);
 type tpm_sign_file_t; files_type(tpm_sign_file_t);
 allow tpm_sign_t tpm_sign_file_t:file { read open create getattr };
+unconfined_domain(tpm_sign_t); # dev
+unconfined_run_to(tpm_sign_t, tpm_sign_exec_t) # dev
 \end{lstlisting}
 % \end{minted}
+% type_transition unconfined_t tpm_sign_exec_t:process tpm_sign_t;
+% allow unconfined_t tpm_sign_t:process transition;
+% role unconfined_r types { tpm_sign_t tpm_sign_exec_t };
 
-We utilize a short Common Intermediate Language (CIL) policy to enforce explicit deny rules,
-which are not available in the standard policy format. % TODO : provide a citation for deny rules
-Deny rules are capable of overriding existing policy to prevent otherwise allowed operations.
-We prevent even a root user from relabeling a malicious program to \exect, reading or removing protections from \filet files,
-or launching or tracing \domaint processes.
-When only specific domains should be able to launch \tpmsign,
-the \verb|tpm_sign_deny| definition should be modified (e.g. \lstinline[style=selinux-cil]|typeattributeset tpm_sign_deny (not tpm_sign_launcher_t)|).
+\textbf{Deny rules} are available in the SELinux Common Intermediate Language (CIL) policy format.
+They provide a clear and robust way override existing policy to restrict permissions,
+and prevent accidental allowances in future policies.
+They allowed us to simplify the above policy by using some macros,
+which are otherwise too permissive (see \zcref[S]{appendix:selinux}).
+We use deny rules to prevent any entity from relabeling malicious programs to \exect, reading or relabeling \filet files,
+or tracing \domaint processes. We prevent \verb|LD_PRELOAD| attacks by denying \verb|noatsecure|.
 % \begin{minted}{text}
 \begin{lstlisting}[style=selinux-cil]
 (deny domain tpm_sign_exec_t (file (relabelto)))
 (deny domain tpm_sign_file_t (file (relabelfrom)))
-(deny domain tpm_sign_t (process (ptrace)))
+(deny domain tpm_sign_t (process (ptrace noatsecure)))
 (typeattribute tpm_sign_file_deny)
 (typeattributeset tpm_sign_file_deny (not tpm_sign_t))
 (deny tpm_sign_file_deny tpm_sign_file_t (file (read)))
 (typeattribute tpm_sign_deny)
-(typeattributeset tpm_sign_deny (unconfined_t))
-(deny tpm_sign_deny tpm_sign_t (process (transition)))
-\end{lstlisting}
-% \end{minted}
-The need for deny rules is two-fold.
-Primarily, they prevent some default allowances made in our policy because we have used macros for simplification,
-but the macros are slightly too permissive for our case (see \zcref[S]{appendix:selinux} for further details).
-Secondarily, the deny rules serve as a clear and robust way to restrict permissions,
-and will prevent accidental allowances due to future policy changes.
-
-We remove the last deny rule and use additional rules in our development environment,
-which must be adjusted for real-world systems
-(specifically, which types can transition to \domaint).
-Since we trust \tpmsign, \domaint can be an unconfined domain,
-but further restricting its permissions is reasonable.
-% \begin{minted}{text}
-\begin{lstlisting}[style=selinux-policy]
-type_transition unconfined_t tpm_sign_exec_t:process tpm_sign_t;
-allow unconfined_t tpm_sign_t:process transition;
-role unconfined_r types { tpm_sign_t tpm_sign_exec_t };
-unconfined_domain(tpm_sign_t);
+; (typeattributeset tpm_sign_deny (not tpm_sign_launcher_t))
+; (deny tpm_sign_deny tpm_sign_t (process (transition)))
 \end{lstlisting}
 % \end{minted}
 
-We recommend preventing switching SELinux to permissive mode or modifying the policy at runtime.
+% In our development environment, we do not restrict launching (e.g. the commented lines) and use additional high-level rules,
+% which must be adjusted for non-development systems
+% (specifically, which types can transition to \domaint).
+% Since we trust \tpmsign, \domaint can be an unconfined domain,
+% but further restricting its permissions is reasonable.
+% % \begin{minted}{text}
+% \begin{lstlisting}[style=selinux-policy]
+% type_transition unconfined_t tpm_sign_exec_t:process tpm_sign_t;
+% allow unconfined_t tpm_sign_t:process transition;
+% role unconfined_r types { tpm_sign_t tpm_sign_exec_t };
+% unconfined_run_to(tpm_sign_t, tpm_sign_exec_t);
+% unconfined_domain(tpm_sign_t);
+% \end{lstlisting}
+% \end{minted}
+
+We recommend making SELinux state immutable at runtime.
 If this is not feasible, a more complex IMA policy may suffice.
+To disable this to make approved changes, the system can be booted with SELinux in permissive mode (boot parameter \texttt{enforcing=0}).
 % \begin{minted}{bash}
 \begin{lstlisting}[style=bash]
 setsebool -P secure_mode_policyload on
 \end{lstlisting}
 % \end{minted}
-To disable this to make approved changes, the system can be booted with SELinux in permissive mode (boot parameter \texttt{enforcing=0}).
 
 We attempted to minimize our reliance on SELinux since policy development can get quite complex,
-especially as support for deny rules was conveniently finalized during our work on this project.
-Concerned about an adversary replacing the \tpmsign binary with a malicious version or
-modifying the relevant SELinux labels, we turned to IMA and EVM.
+especially as support for deny rules was conveniently finalized during our research.
 Further, for our research outside this particular work, we must protect other infrastructure which interacts with
 the \tpmsign binary.
-While SELinux and more boot-time measurements could likely solve these issues,
+Thus, we turned to IMA and EVM to protect the integrity of the \tpmsign binary and the SELinux labels.
+While SELinux with more boot-time measurements may be sufficient,
 we believe IMA is easy to grasp and adds an additional, more dynamic layer of protection.
 
 \subsection{IMA Policy}
