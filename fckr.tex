@@ -242,7 +242,7 @@ We discuss variations and limitations of our setup,
 and note that deeper kernel support leveraging existing TPM features could enable stronger future designs.
 
 \section{Background}
-Our framework requires careful implementation of several mechanisms.
+Our framework requires careful implementation to ensure its effectiveness.
 We provide background on the TPM, SELinux, IMA, EVM, and LUKS, the mechanisms used in our implementation.
 % TODO: improved but still don't love this?
 
@@ -257,16 +257,16 @@ When used with Secure Boot-enabled firmware, it is used to store boot measuremen
 \subsubsection{Recording Boot Measurements}
 To store boot measurements, the TPM utilizes Platform Configuration Registers (PCRs) \cite{Trusted-Computing-Group:2025:TCG-TPM-2.0-Part1-Architecture}.
 PCRs store hashes of values through hash extension operations.
-If a PCR has a current hash value $x$, and it is being extended with a new hash $y$,
-the PCR's new value becomes $x_{new} = \hash{\mathop{concat}(x,y)}$.
+If a PCR has a current hash value $x$ and it is being extended with a new hash $y$,
+the PCR's value becomes $x_{new} = \hash{\mathop{concat}(x,y)}$.
 By correlating each hash extension to its source,
 successfully reconstructing a PCR value demonstrates integrity of the recorded measurements.
 For cryptographically secure hash functions like SHA-256,
-it is considered impossible for an adversary to discover $y$ such that $x_{new}$ can lie about previous measurements.
+finding $y$ such that $x_{new}$ lies about previous measurements is infeasible.
 
-PCR extension is the primary mechanism behind Secure Boot and other measured or trusted boot strategies.
+PCR extension is the primary mechanism behind Secure Boot and other measured/trusted boot techniques.
 During boot, the Unified Extensible Firmware Interface (UEFI) measures the firmware and the bootloader,
-and the bootloader measures the kernel and other parts of the OS.
+and the bootloader measures the kernel and parts of the OS.
 Because users cannot interfere with early boot,
 the measurements reliably indicate firmware and software integrity.
 The measurements remain trustworthy at runtime as they are stored in PCRs 0--15, which are non-resettable and persist until reboot \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP}.
@@ -275,7 +275,7 @@ The measurements remain trustworthy at runtime as they are stored in PCRs 0--15,
 % TODO : cite here
 Since the TPM has limited storage, secrets are often unloaded and reloaded,
 and they are stored as a hierarchy.
-Primary keys act as the root parents of the hierarchy and are deterministically generated.
+Primary keys are deterministically generated and act as root parents in the hierarchy.
 Their children are regular, randomly generated keys and other secrets.
 Parent keys encrypt their children for external storage,
 so they must be regenerated (primary keys) or reloaded (regular keys) to decrypt their children.
@@ -298,7 +298,7 @@ PCRs effectively limit key usage to an administrator-approved boot configuration
 Keys are tied to their authorization mechanism.
 For password-authorized keys, it is possible to change the password.
 For simple PCR-based authorization,
-the expected PCRs cannot be changed,
+the expected values cannot be changed,
 which is problematic for system updates \cite{Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys,Trusted-Computing-Group:2025:TCG-TPM-2.0-Part1-Architecture}.
 
 Fortunately, policy-based authorization is more advanced.
@@ -345,7 +345,7 @@ EVM is a similar integrity mechanism to IMA, but protects file meta\-data, such 
 This prevents adversaries from simply adjusting file metadata to bypass SELinux or IMA protections.
 EVM can use HMAC to detect any offline filesystem modifications, or use signatures to detect runtime modifications;
 both can be enabled at once.
-EVM HMACs and signatures are verified when a file matches an IMA appraisal rule.
+When a file is appraised by IMA, its EVM HMAC/signature is verified.
 
 ``Portable'' EVM signatures exclude system-specific metadata and
 actively prevent modifying metadata: although IMA prevents \emph{the operation} from occuring \emph{if the file is corrupt},
@@ -355,13 +355,11 @@ When both HMACs and signatures are enabled, EVM may replace non-portable signatu
 % TODO : consider simplifying this paragraph
 
 \subsection{Linux Unified Key Setup (LUKS) Containers}
-LUKS containers are encrypted filesystem images, protected with a password or TPM PCRs.
-Thus, LUKS containers can protect files when the system boots into an unapproved state.
-Compared to manual decryption of files, the kernel manages LUKS containers
-and files are only decrypted in memory when accessed; % TODO : cite ?
-LUKS containers also retain file metadata.
-Whether a LUKS container or a manual process is used, a decryption key must be kept in memory. % ? remove this sentence
-Thus, we favor the widespread, easy-to-use LUKS mechanisms.
+LUKS \cite{Fruhwirth:LUKS:2005} creates encrypted filesystem images, protected with a password or TPM PCRs.
+Thus, LUKS can protect files when the system boots into an unapproved state.
+Whether a LUKS-based or a manual decryption process is used, a key must be kept in memory or otherwise easily available.
+Since LUKS containers trivially retain file metadata and are managed by the kernel,
+we favor the widespread, easy-to-use LUKS mechanisms over a manual decryption process.
 
 \section{Motivation}
 We assume an adversary has root privileges on a general purpose Linux system.
