@@ -643,9 +643,9 @@ but the policy can be created on another machine when the approved PCR values ar
 To update \wcp (e.g. after system updates), these commands can be repeated.
 % \begin{minted}{bash}
 \begin{lstlisting}[style=bash]
-tpm2_pcrread -opcrs.sha256 sha256:7,8,9,11,14
+tpm2_pcrread -opcrs.sha256 sha256:4,7,8,9,11,14
 tpm2_startauthsession -S session.ctx
-tpm2_policypcr -S session.ctx -l sha256:7,8,9,11,14 -f pcrs.sha256 -L pcr.wcp
+tpm2_policypcr -S session.ctx -l sha256:4,7,8,9,11,14 -f pcrs.sha256 -L pcr.wcp
 tpm2_flushcontext session.ctx
 openssl dgst -sha256 -sign policy_key_private.pem -out pcr.sig pcr.wcp
 \end{lstlisting}
@@ -694,7 +694,7 @@ The same \texttt{losetup} and \texttt{systemd-cryptenroll} commands update the P
 fallocate -l 1GB ~/vault.img
 cryptsetup -v luksFormat ~/vault.img
 losetup --find --show ~/vault.img
-systemd-cryptenroll --wipe-slot=tpm2 --tpm2-device=auto --tpm2-pcrs=4+7+8+9+11 /dev/loop0
+systemd-cryptenroll --wipe-slot=tpm2 --tpm2-device=auto --tpm2-pcrs=4+7+8+9+11+14 /dev/loop0
 losetup -d /dev/loop0
 cryptsetup -v luksOpen ~/vault.img vault_mapper
 mkfs -t ext4 /dev/mapper/vault_mapper
