@@ -285,7 +285,7 @@ Loading a key in the TPM merely caches it; authorization checks are still enforc
 
 \subsubsection{Protecting Keys and Other Secrets}\label{sec:key-protections}
 TPM-resident private keys are only usable within the TPM itself and are never available on the OS.
-Other secrets have the same protections available, but get released to the OS when those protections are satisfied.
+Other TPM-stored secrets have the same protections available, but get released to the OS when those protections are satisfied.
 We focus on TPM-resident keys, without loss of generality.
 
 TPM-resident keys support conditional usage,
@@ -861,6 +861,8 @@ through exploits undetected by IMA, may use the wildcard policy to sign falsifie
 \ifthesis\bibliographystyle{ACM-Reference-Format}\fi
 \bibliography{ref}
 
+\ifacm\iftwocolumn\balance\fi\fi
+
 \appendix
 \section{Details of SELinux Policy}\label{appendix:selinux}
 There are multiple variants on the SELinux policy setup to accomplish the same protections as in the main portion of the text.
@@ -907,7 +909,6 @@ In our policy, this allows us to deny reads from every domain except \domaint.
 % TODO: discussion about unconfined_run_to
 % TODO: Discussion about neverallow rules
 
-\ifacm\iftwocolumn\balance\fi\fi
 \section{Setting up IMA}
 Setting up IMA is a complicated process on Fedora.
 To ensure trustworthiness of the installed IMA policy and signatures, there are some setup steps that go beyond ``put a file in a place''.
