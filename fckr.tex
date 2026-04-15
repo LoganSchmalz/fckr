@@ -317,11 +317,13 @@ These permissions can control actions such as reading and writing to certain fil
 executing programs, inter-process communi\-cation, and opening specific network ports.
 
 \subsection{Integrity Measurement Architecture (IMA)}
-IMA \cite{Sailer:2004:Integrity-Measurement-Architecture,IBM:IMA-Documentation} measures files and prevents them from being opened or executed if they are changed from an approved state.
-Like SELinux, IMA is widely available.
+IMA \cite{Sailer:2004:Integrity-Measurement-Architecture,IBM:IMA-Documentation} measures and appraises files,
+preventing them from being opened if they are changed from an approved state.
+IMA is also integrated into the Linux kernel.
 Integrity hashes and signatures for files are stored as extended filesystem attributes.
-When IMA is enabled in \fix mode, files matched by the IMA policy have their hashes updated.
-In \appraise mode, IMA prevents protected files from being opened if their contents do not match the associated hash.
+When enabled in \fix mode, IMA updates hashes of files matched by IMA policy.
+In \appraise mode, IMA prevents opening appraised files when their contents do not match the associated hash.
+Files can also be measured without necessarily being appraised, in which case they go in a measurement log with a correlated TPM PCR.
 IMA \fix mode can only be enabled when Secure Boot is disabled in the UEFI,
 otherwise \appraise mode is enabled.
 IMA policy can include various specifications such as file owners, the active user, and whether files are being opened for reading or execution.
