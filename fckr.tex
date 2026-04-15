@@ -841,13 +841,19 @@ SeCReT \cite{Jang:SeCReT:2015} establishes a secure communication channel betwee
 To protect session keys, they make minor modifications to the Linux kernel to flush keys from memory and protect page accesses.
 This strategy is potentially adaptable to our framework.
 
-In RESEKRA \cite{Gomez:RESEKRA:2022}
-a third-party verifies the IMA measurement log and corresponding PCR to determine runtime integrity of programs on a system,
-and signs new wildcard policies when the measurement log updates.
+In RESEKRA \cite{Gomez:RESEKRA:2022},
+a third-party verifies the IMA measurement log/PCR to determine integrity of programs on a system,
+signing new wildcard policies when the measurement log updates.
 % As verifiers should not share their wildcard policy signing keys, each verifier will require its own corresponding private key on the edge system.
 % In addition, the heavy TPM-based attestation process must be performed for every update, sacrificing even more performance than our framework.
-While RESEKRA presents a valuable technique, it does not address our direct concern that a malicious entity,
-through exploits undetected by IMA, may use the wildcard policy to sign falsified data.
+However, it does not address our direct concern that a malicious entity,
+through exploits undetected by IMA, may access the wildcard policy and use the key.
+
+Wagner et al. \cite{Wagner:Distributed-Usage-Control-SGX:2018} develop a similar technique to ours using the TPM and the Intel Software Guard Extensions (SGX) TEE.
+They acknowledge the potential existence of a TPM-based technique using IMA, EVM, and access controls,
+but they miss our realizations that wildcard policies can be treated as secrets and LUKS can protect them during unapproved boots,
+making our framework stronger than they expected.
+Additionally, SGX is now deprecated on consumer processors without a suitable alternative.
 
 \section{Conclusion}
 

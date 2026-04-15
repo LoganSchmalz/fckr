@@ -1,3 +1,21 @@
+@inproceedings{Wagner:Distributed-Usage-Control-SGX:2018,
+author = {Wagner, Paul Georg and Birnstill, Pascal and Beyerer, J\"{u}rgen},
+title = {Distributed Usage Control Enforcement through Trusted Platform Modules and SGX Enclaves},
+year = {2018},
+isbn = {9781450356664},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3205977.3205990},
+doi = {10.1145/3205977.3205990},
+abstract = {In the light of mobile and ubiquitous computing, sharing sensitive information across different computer systems has become an increasingly prominent practice. This development entails a demand of access control measures that can protect data even after it has been transferred to a remote computer system. In order to address this problem, sophisticated usage control models have been developed. These models include a client side reference monitor (CRM) that continuously enforces protection policies on foreign data. However, it is still unclear how such a CRM can be properly protected in a hostile environment. The user of the data on the client system can influence the client's state and has physical access to the system. Hence technical measures are required to protect the CRM on a system, which is legitimately used by potential attackers. Existing solutions utilize Trusted Platform Modules (TPMs) to solve this problem by establishing an attestable trust anchor on the client. However, the resulting protocols have several drawbacks that make them infeasible for practical use. This work proposes a reference monitor implementation that establishes trust by using TPMs along with Intel SGX enclaves. First we show how SGX enclaves can realize a subset of the existing usage control requirements. Then we add a TPM to establish and protect a powerful enforcement component on the client. Ultimately this allows us to technically enforce usage control policies on an untrusted remote system.},
+booktitle = {Proceedings of the 23nd ACM on Symposium on Access Control Models and Technologies},
+pages = {85–91},
+numpages = {7},
+keywords = {usage control, trusted reference monitor, trusted platform module, secure remote computation, access control, SGX},
+location = {Indianapolis, Indiana, USA},
+series = {SACMAT '18}
+}
+
 @phdthesis{Fruhwirth:LUKS:2005,
   title={New Methods in Hard Disk Encryption},
   author={Clemens Fruhwirth},
