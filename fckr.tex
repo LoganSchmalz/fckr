@@ -232,9 +232,9 @@ At the same time, the TPM supports measured boot which establishes firmware and 
 Thus, it is possible to ensure proper authentication is enforced at the OS level, before allowing keys to be used.
 
 % TODO : we present a general methodology and demonstrate how to implement it with...?
-In this work, we demonstrate how to combine 
+In this work, we demonstrate how to combine existing Linux features---%
 Security-Enhanced Linux (SELinux), the Linux Integrity Measurement Architecture (IMA),
-the Extended Verification Module (EVM), and Linux Unified Key Setup (LUKS) with
+the Extended Verification Module (EVM), and Linux Unified Key Setup (LUKS)---with
 measured boot and TPM policy authorization to enforce fine-grained access control to TPM-resident secrets.
 % We describe the required SELinux, IMA, and EVM configurations, boot-time measurements, LUKS setup, and TPM configuration necessary to achieve this.
 We discuss variations and limitations of our setup,
@@ -311,22 +311,21 @@ Wildcard policies may also be leveraged to allow multiple policies to authorize 
 or to utilize the same policy for different keys, including keys on different devices.
 
 \subsection{Security-Enhanced Linux (SELinux)}
-SELinux \cite{Loscocco:2001:SELinux} provides mandatory access controls on Linux and is integrated into the Linux kernel. 
+SELinux \cite{Loscocco:2001:SELinux} provides mandatory access controls on Linux. 
 Labels added to users, files, and processes determine their permissions according to the SELinux policy installed on the system.
-These permissions can control actions such as reading and writing to certain files (including append-only writes),
-executing programs, inter-process communi\-cation, and opening specific network ports.
+These permissions can restrict actions such as reading, writing, and appending certain files,
+executing programs, inter-process communi\-cation, and opening network ports.
 
 \subsection{Integrity Measurement Architecture (IMA)}
 IMA \cite{Sailer:2004:Integrity-Measurement-Architecture,IBM:IMA-Documentation} measures and appraises files,
 preventing them from being opened if they are changed from an approved state.
-IMA is also integrated into the Linux kernel.
 Integrity hashes and signatures for files are stored as extended filesystem attributes.
 When enabled in \fix mode, IMA updates hashes of files matched by IMA policy.
 In \appraise mode, IMA prevents opening appraised files when their contents do not match the associated hash.
-Files can also be measured without necessarily being appraised, in which case they go in a measurement log with a correlated TPM PCR.
+Files can also be measured without necessarily being appraised; measurements are kept in a log alongside a correlated PCR.
 IMA \fix mode can only be enabled when Secure Boot is disabled in the UEFI,
 otherwise \appraise mode is enabled.
-IMA policy can include various specifications such as file owners, the active user, and whether files are being opened for reading or execution.
+IMA policy can include various specifications such as the file owner, the active user, and whether files are being opened for reading or execution.
 
 Signatures can also be used to detect file corruption.
 Allowing hashes to be overwritten in \appraise mode is unsafe, as an adversary may know the expected value.
