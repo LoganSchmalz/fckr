@@ -343,7 +343,7 @@ Afterwards, the custom IMA policy cannot be overwritten, only appended to.
 % TODO: what to cite here? https://lwn.net/Articles/393673/ ima-docs?
 EVM is a similar integrity mechanism to IMA, but protects file meta\-data, such as the permissions and SELinux label.
 This prevents adversaries from simply adjusting file metadata to bypass SELinux or IMA protections.
-EVM can use HMAC to detect any offline filesystem modifications, or use signatures to detect runtime modifications;
+EVM can use HMACs to detect any offline filesystem modifications, or use signatures to detect runtime modifications;
 both can be enabled at once.
 When a file is appraised by IMA, its EVM HMAC/signature is verified.
 
