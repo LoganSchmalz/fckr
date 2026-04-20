@@ -699,6 +699,17 @@ mount /dev/mapper/vault_mapper /mnt/vault
 \end{lstlisting}
 % \end{minted}
 
+\subsection{Memory Protections}
+While protecting memory is not our primary goal,
+we made some effort to prevent leaking \wcp via external mechanisms.
+We previously solved the concern of tracing \tpmsign with SELinux,
+and active \tpmsign process files are labelled \domaint and also protected by SELinux.
+As the kernel may generate coredumps when programs crash, \tpmsign disables coredumps with \verb|prctl|.
+Secrets can also be leaked through memory swapped to disk, so \tpmsign prevents swapping with \verb|mlockall|.
+Depending on the kernel's compile-time configuration, important memory may be readable from \verb|/proc/kcore|,
+\verb|/dev/mem|, and \verb|/dev/kmem|.
+These can be protected with SELinux or the kernel's \verb|lockdown=confidentiality| mode/boot parameter.
+
 \subsection{Deployment Considerations}\label{sec:implementation-details}
 Our development system uses Fedora 42 with an out-of-the-box kernel.
 This influenced some of our decisions which may require modification for other distributions.
@@ -778,9 +789,10 @@ Against an adversary capable of installing a rootkit or otherwise corrupting the
 the contents of \wcp can be leaked such that it, and thus \pk, will be persistently available to the adversary until boot PCRs change (e.g. via a system update),
 regardless of the state of SELinux and IMA.
 We can demonstrate a rootkit that corrupts IMA/SELinux behavior,
-however, on a system where IMA checks kernel modules, it is prohibitively difficult to install.
-In addition, our framework does not independently defend against exploits that leak arbitrary memory, like side-channel attacks,
-but \tpmsign is short-lived to limit opportunity for such attacks.
+however, when IMA checks kernel modules, it is prohibitively difficult to install.
+We have attempted to address trivial exploits (intentional features) that leak arbitrary memory,
+but we did not make any effort to prevent side-channel attacks.
+\tpmsign is short-lived to limit opportunity for such attacks.
 Thus, we believe bypassing our framework on an otherwise uncorrupted, up-to-date kernel has equivalent difficulty to finding at least one zero-day exploit.
 
 The final limitation is the speed of the TPM.
