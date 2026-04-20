@@ -271,9 +271,8 @@ the measurements reliably indicate firmware and software integrity.
 The measurements remain trustworthy at runtime as they are stored in PCRs 0--15, which are non-resettable and persist until reboot \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP}.
 
 \subsubsection{Loading and Storing Secrets}
-% TODO : cite here
 Since the TPM has limited storage, secrets are often unloaded and reloaded,
-and they are stored as a hierarchy.
+and they are stored as a hierarchy \cite{Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys,Trusted-Computing-Group:2025:TCG-TPM-2.0-Part1-Architecture}.
 Primary keys are deterministically generated and act as root parents in the hierarchy.
 Their children are regular, randomly generated keys and other secrets.
 Parent keys encrypt their children for external storage,
