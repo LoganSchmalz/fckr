@@ -474,12 +474,13 @@ or tracing \domaint processes. We prevent \verb|LD_PRELOAD| attacks by denying \
 (deny domain tpm_sign_exec_t (file (relabelto)))
 (deny domain tpm_sign_file_t (file (relabelfrom)))
 (deny domain tpm_sign_t (process (ptrace noatsecure)))
-(typeattribute tpm_sign_file_deny)
-(typeattributeset tpm_sign_file_deny (not tpm_sign_t))
-(deny tpm_sign_file_deny tpm_sign_file_t (file (read)))
-(typeattribute tpm_sign_deny)
-; (typeattributeset tpm_sign_deny (not tpm_sign_launcher_t))
-; (deny tpm_sign_deny tpm_sign_t (process (transition)))
+(typeattribute not_tpm_sign)
+(typeattributeset not_tpm_sign (not tpm_sign_t))
+(deny not_tpm_sign tpm_sign_file_t (file (read)))
+(deny not_tpm_sign tpm_sign_t (file (read)))
+; (typeattribute not_tpm_launcher) ; EXAMPLE
+; (typeattributeset not_tpm_launcher (not tpm_sign_launcher_t))
+; (deny not_tpm_launcher tpm_sign_t (process (transition)))
 \end{lstlisting}
 % \end{minted}
 
