@@ -714,7 +714,7 @@ These can be protected with SELinux or the kernel's \verb|lockdown=confidentiali
 Our development system uses Fedora 42 with an out-of-the-box kernel.
 This influenced some of our decisions which may require modification for other distributions.
 
-Many Linux distributions use shim, a simple Microsoft-signed bootloader that facilitates Secure Boot support \cite{rhboot:2026:shim}.
+Many Linux distributions use \textbf{shim}, a simple Microsoft-signed bootloader, to facilitate Secure Boot support \cite{rhboot:2026:shim}.
 Shim contains its own certificate database to check signatures, so
 the UEFI measures shim, and shim measures the real bootloader (e.g. GRUB).
 This does not affect the security of our framework, as the chain of trust remains intact.
@@ -780,9 +780,9 @@ so having \wcp also check PCRs instead of using a password provides some extra a
 Note that \wcp is not necessarily unprotected during an unapproved boot, as the IMA and SELinux policies may still be approved but another part of the system may have changed.
 To exploit a lapse in protection caused by a manual unlock, an adversary must remember the contents of \wcp until the system is rebooted to the approved state.
 
-There are three primary limitations of this secret protection scheme.
+There are three primary limitations of our work.
 The first is protecting a large subset of a system with IMA can make the system annoying to change or update.
-This is an acknowledged problem, but an unfortunate reality of using IMA.
+This is an unfortunate reality of using IMA.
 
 The second limitation is assuming IMA and SELinux protections cannot be bypassed under an approved boot.
 Against an adversary capable of installing a rootkit or otherwise corrupting the kernel at runtime,
@@ -796,13 +796,11 @@ but we did not make any effort to prevent side-channel attacks.
 Thus, we believe bypassing our framework on an otherwise uncorrupted, up-to-date kernel has equivalent difficulty to finding at least one zero-day exploit.
 
 The final limitation is the speed of the TPM.
-Even with optimizations, a non-virtualized TPM typically takes a few hundred milliseconds to produce an RSA signature (elliptic curve signatures are usually faster).
-This is problematic in environments requiring high-frequency operations.
+Even with optimizations, a non-virtualized TPM can take around 100 milliseconds to produce an elliptic curve signature, with RSA being slower.
+This is impractical for environments requiring high-frequency operations.
 Alternative hardware security modules or virtualized TPMs may improve on this.
 
 \section{Variations and Future Work}
-% The design of our framework allows for several adjustments to address specific concerns.
-
 We considered two relatively straightforward modifications to our implementation.
 First, using a unified kernel image could reduce boot and measurement complexity.
 Second, writing a minimal, bespoke kernel module to protect \wcp would avoid the need for intricate SELinux and IMA policies and the associated administrative overhead.
@@ -819,15 +817,15 @@ Alternatively, \pk could be reprovisioned on every boot, but remote parties woul
 (and TPM-resident, if that is still desired).
 These options limit runtime leaks to a single boot cycle, at the cost of increased complexity in policy or key management respectively.
 
-While other hardware security modules with similar functionality to the TPM exist, they are not widely available.
-Trusted execution environments (TEEs) are, however, commonly available on enterprise hardware,
-and provide strong memory isolation protections.
-TEEs may be sufficient to justify storing \wcp or \pk directly in protected memory,
-potentially improving performance.
+While other hardware security modules with similar functionality to the TPM exist, they are not widely available on consumer hardware.
+Trusted execution environments (TEEs) are commonly available on enterprise hardware,
+and provide strong memory isolation protections that
+may be sufficient to justify storing \wcp or \pk directly in protected memory.
 
 TPM localities or resettable PCRs could be leveraged to significantly harden our framework.
 Either option would remove the secrecy requirement for \wcp,
 simplifying the SELinux policy and removing the need for EVM and LUKS.
+However, neither option is currently available.
 If TPM localities were protected by SELinux (or equivalent),
 \wcp could require a locality only accessible by \tpmsign under an approved boot.
 Alternatively, the kernel could control resettable PCR 16, and include details about the program currently accessing the TPM in PCR 16.
