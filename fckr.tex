@@ -339,19 +339,16 @@ Afterwards, the custom IMA policy cannot be overwritten, only appended to.
 
 \subsection{Extended Verification Module (EVM)}
 \label{sec:evm}
-% TODO: what to cite here? https://lwn.net/Articles/393673/ ima-docs?
-EVM is a similar integrity mechanism to IMA, but protects file meta\-data, such as the permissions and SELinux label.
-This prevents adversaries from simply adjusting file metadata to bypass SELinux or IMA protections.
+EVM \cite{Zohar:EVM:2010,IBM:IMA-Documentation} protects file meta\-data, such as the permissions and SELinux label.
 EVM can use HMACs to detect any offline filesystem modifications, or use signatures to detect runtime modifications;
 both can be enabled at once.
 When a file is appraised by IMA, its EVM HMAC/signature is verified.
 
-``Portable'' EVM signatures exclude system-specific metadata and
-actively prevent modifying metadata: although IMA prevents \emph{the operation} from occuring \emph{if the file is corrupt},
-it does not inherently prevent initial corruption from occuring;
-when using EVM portable signatures, any modification to the file's \emph{metadata} will be prevented.
-When both HMACs and signatures are enabled, EVM may replace non-portable signatures with HMACs upon metadata changes.
-% TODO : consider simplifying this paragraph
+``Portable'' EVM signatures exclude system-specific metadata and actively prevent modifying file metadata.
+Thus, adversaries cannot edit file metadata to bypass protections.
+This differs from the behavior of IMA, which checks if a file is corrupt upon access,
+but does not inherently prevent the corruption from occuring.
+When both HMACs and signatures are enabled, EVM may replace non-portable signatures with HMACs.
 
 \subsection{Linux Unified Key Setup (LUKS) Containers}
 LUKS \cite{Fruhwirth:LUKS:2005} creates encrypted filesystem images, protected with a password or TPM PCRs.
