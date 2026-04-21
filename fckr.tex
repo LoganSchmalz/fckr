@@ -428,7 +428,7 @@ The relationships of mechanisms in our framework are visually demonstrated in \z
   \label{fig:framework}
 \end{figure}
 
-\subsection{SELinux Policy}
+\subsection{SELinux Policy}\label{sec:implementation-selinux}
 % policy_module(tpm_sign, 1.0.0)
 % require {
 %         type unconfined_t;
@@ -697,7 +697,8 @@ mount /dev/mapper/vault_mapper /mnt/vault
 
 \subsection{Memory Protections}
 We also want to protect \tpmsign's memory to protect \wcp.
-We previously solved the concern of tracing \tpmsign or reading active process files with SELinux.
+We trust \tpmsign does not have memory safety issues.
+We previously solved concerns of direct attacks against \tpmsign with SELinux in \zcref[S]{sec:implementation-selinux}.
 \tpmsign further disables coredumps with \verb|prctl|, and disables swapping memory to disk with \verb|mlockall|.
 Important system memory may also be readable from \verb|/proc/kcore|,
 \verb|/dev/mem|, and \verb|/dev/kmem|,
