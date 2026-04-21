@@ -784,11 +784,11 @@ To defend against this, we rely on the assumption that IMA/SELinux protections c
 However, adversaries may be capable of leaking \wcp through rootkits or other exploits.
 We can demonstrate a rootkit that corrupts IMA/SELinux behavior,
 however, it is prohibitively difficult to install when IMA checks kernel modules.
-We attempted to address trivial exploits (intentional features) that leak arbitrary memory,
+We addressed trivial exploits (intentional features) that leak arbitrary memory,
 but cannot prevent side-channel attacks, other than making
 \tpmsign short-lived to limit opportunity for such attacks.
-Thus, we believe bypassing our framework on an otherwise uncorrupted, up-to-date kernel requires a zero-day or unmitigable exploit.
-We address a mitigation for this limitation in \zcref[S]{sec:variations}.
+We believe bypassing our framework on an uncorrupted, up-to-date kernel requires a zero-day or otherwise unmitigable exploit.
+We describe a partial mitigation for this limitation in \zcref[S]{sec:variations}.
 
 The final limitation is the speed of the TPM.
 Even with optimizations, a TPM can take around 100 milliseconds to produce an elliptic curve signature, with RSA being slower.
@@ -806,11 +806,11 @@ We view this as a strictly worse option---%
 any sessions with \pk loaded must also be protected, or sessions, and their performance benefits, must be foregone entirely.
 This also rules out the option of storing \pk in the TPM's NVRAM.
 
-To address our final limitation concerning authenticity across boot cycles, two other key management strategies are feasible.
+To partially address our final limitation, concerning authenticity across boot cycles, two other key management strategies are viable.
 Policies can require a check to the boot-count, so \wcp can be reapproved on every boot.
 Alternatively, a new \pk can be created on every boot, but remote parties would need to verify the PCRs to ensure \pk is properly protected
 (and verify \pk is TPM-resident, if desired).
-These options limit runtime leaks to a single boot cycle, at the cost of increasing complexity in policy or key management respectively.
+These strategies limit runtime leaks to a single boot cycle, at the cost of more complexity in policy or key management.
 
 While other hardware security modules with similar functionality to the TPM exist, they are not widely available on consumer hardware.
 Trusted execution environments (TEEs) are commonly available on enterprise hardware,
