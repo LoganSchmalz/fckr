@@ -731,7 +731,7 @@ measure \systemd (i.e. \verb|appraise_tcb|), this is optional.
 
 
 \section{Evaluation and Limitations}
-We experimentally demonstrated the following features of this setup:
+We experimentally demonstrated the security of our setup:
 \begin{itemize}
   \item Changing the \initramfs, kernel, IMA policy, SELinux policy, and other items measured into PCRs results in an unapproved boot state.
   \item When the system is booted in an unapproved state:
@@ -741,7 +741,7 @@ We experimentally demonstrated the following features of this setup:
           \item If the container is manually unlocked so \wcp is available, the PCRs will not match \wcp and \pk will not be usable.
           \item It is not possible to corrupt the IMA policy, because custom IMA policies require a signature.
         \end{itemize}
-  \item When the system is booted in an approved state (IMA and SELinux working as intended), it is not possible to:
+  \item When the system is booted in an approved state, it is not possible to:
         \begin{itemize}
           \item Give unapproved programs the \exect label
           \item Corrupt the \tpmsign binary to leak information
@@ -791,9 +791,9 @@ but we did not make any effort to prevent side-channel attacks.
 Thus, we believe bypassing our framework on an otherwise uncorrupted, up-to-date kernel has equivalent difficulty to finding at least one zero-day exploit.
 
 The final limitation is the speed of the TPM.
-Even with optimizations, a non-virtualized TPM can take around 100 milliseconds to produce an elliptic curve signature, with RSA being slower.
+Even with optimizations, a TPM can take around 100 milliseconds to produce an elliptic curve signature, with RSA being slower.
 This is impractical for environments requiring high-frequency operations.
-Alternative hardware security modules or virtualized TPMs may improve on this.
+Other hardware security modules or virtual TPMs may improve on this.
 
 \section{Variations and Future Work}
 We considered two relatively straightforward modifications to our implementation.
