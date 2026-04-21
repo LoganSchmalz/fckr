@@ -779,16 +779,15 @@ There are three primary limitations of our work.
 The first is protecting a large subset of a system with IMA can make the system annoying to change or update.
 This is an unfortunate reality of using IMA.
 
-The second limitation is assuming IMA and SELinux protections cannot be bypassed under an approved boot.
-Against an adversary capable of installing a rootkit or otherwise corrupting the kernel at runtime,
-the contents of \wcp can be leaked such that it, and thus \pk, will be persistently available to the adversary until boot PCRs change (e.g. via a system update),
-regardless of the state of SELinux and IMA.
+The second limitation is if \wcp is leaked to the adversary, then \pk will be persistently available to the adversary until boot PCRs change (e.g. via a system update).
+To defend against this, we rely on the assumption that IMA/SELinux protections cannot be bypassed under an approved boot.
+However, adversaries may be capable of leaking \wcp through rootkits or other exploits.
 We can demonstrate a rootkit that corrupts IMA/SELinux behavior,
-however, when IMA checks kernel modules, it is prohibitively difficult to install.
-We have attempted to address trivial exploits (intentional features) that leak arbitrary memory,
-but we did not make any effort to prevent side-channel attacks.
-\tpmsign is short-lived to limit opportunity for such attacks.
-Thus, we believe bypassing our framework on an otherwise uncorrupted, up-to-date kernel has equivalent difficulty to finding at least one zero-day exploit.
+however, it is prohibitively difficult to install when IMA checks kernel modules.
+We attempted to address trivial exploits (intentional features) that leak arbitrary memory,
+but cannot prevent side-channel attacks, other than making
+\tpmsign short-lived to limit opportunity for such attacks.
+Thus, we believe bypassing our framework on an otherwise uncorrupted, up-to-date kernel requires a zero-day or unmitigable exploit.
 
 The final limitation is the speed of the TPM.
 Even with optimizations, a TPM can take around 100 milliseconds to produce an elliptic curve signature, with RSA being slower.
