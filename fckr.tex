@@ -769,12 +769,12 @@ We experimentally demonstrated the following features of this setup:
 % \end{table*}
 % \end{comment}
 
-While the LUKS container should protect \wcp or a password sufficiently,
-it is sometimes necessary to manually unlock the LUKS container when the system is in an unapproved state to accomodate a system update.
+While the LUKS container should protect \wcp sufficiently,
+it is sometimes necessary to manually unlock the LUKS container during an unapproved boot to accomodate a system update.
 It is still beneficial to know \pk cannot be used at that moment,
-so having \wcp also check PCRs instead of using a password provides some extra assurance.
-Note that \wcp is not necessarily unprotected during an unapproved boot, as the IMA and SELinux policies may still be approved but another part of the system may have changed.
-To exploit a lapse in protection caused by a manual unlock, an adversary must remember the contents of \wcp until the system is rebooted to the approved state.
+so having \wcp also check PCRs provides some extra assurance.
+Note that \wcp is not necessarily unprotected during an unapproved boot if something outside our protections has changed.
+To exploit a lapse in protection caused by a manual unlock, an adversary must remember the contents of \wcp until the system reboots to the approved state.
 
 There are three primary limitations of our work.
 The first is protecting a large subset of a system with IMA can make the system annoying to change or update.
