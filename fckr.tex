@@ -530,6 +530,17 @@ Complex policies may be able to provide defense on systems where the SELinux sta
 at the risk of increased operational complexity.
 At the least, we recommend including the rules of the available default IMA policies \cite{IBM:IMA-Policy}.
 
+\subsection{Memory Protections}
+We also want to protect \tpmsign's memory to protect \wcp.
+We trust \tpmsign does not have memory safety issues.
+We previously solved concerns of direct attacks against \tpmsign with SELinux in \zcref[S]{sec:implementation-selinux}.
+\tpmsign further disables coredumps with \verb|prctl|, and disables swapping memory to disk with \verb|mlockall|.
+Important system memory may also be readable from \verb|/proc/kcore|,
+\verb|/dev/mem|, and \verb|/dev/kmem|,
+which can be protected with SELinux or the \verb|lockdown=confidentiality| boot parameter.
+These changes protect \wcp from intended debugging features;
+we do not attempt to protect against side-channel attacks.
+
 \subsection{Boot-time and Initramfs Measurements}
 We add a script to \initramfs that measures the IMA and SELinux policies
 as well as the \systemd init binary on the root filesystem during boot.
@@ -694,17 +705,6 @@ mkdir -p /mnt/vault/
 mount /dev/mapper/vault_mapper /mnt/vault
 \end{lstlisting}
 % \end{minted}
-
-\subsection{Memory Protections}
-We also want to protect \tpmsign's memory to protect \wcp.
-We trust \tpmsign does not have memory safety issues.
-We previously solved concerns of direct attacks against \tpmsign with SELinux in \zcref[S]{sec:implementation-selinux}.
-\tpmsign further disables coredumps with \verb|prctl|, and disables swapping memory to disk with \verb|mlockall|.
-Important system memory may also be readable from \verb|/proc/kcore|,
-\verb|/dev/mem|, and \verb|/dev/kmem|,
-which can be protected with SELinux or the \verb|lockdown=confidentiality| boot parameter.
-These changes protect \wcp from intended debugging features;
-we do not attempt to protect against side-channel attacks.
 
 \subsection{Deployment Considerations}\label{sec:implementation-details}
 Our development system uses Fedora 42 with an out-of-the-box kernel.
