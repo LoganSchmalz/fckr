@@ -389,16 +389,13 @@ In our framework, access to a TPM signing key \pk is restricted to a single prog
 SELinux enforces rules on \tpmsign and a wildcard policy \wcp.
 IMA protects the integrity of \tpmsign, as well as any binaries permitted to launch it.
 EVM and SELinux protect the SELinux labels on \tpmsign and \wcp.
-%These protections are strongest when the SELinux policy is designated immutable,
-%preventing runtime policy modification by an adversary.
 
 The wildcard policy \wcp is the secret used to access \pk.
 \wcp is stored within a LUKS container that unlocks during boot when our framework is enabled.
 When the system is booted into an unapproved state, \wcp is sealed in the LUKS container and cannot be accessed.
 Additionally, \wcp itself requires the PCRs to indicate the system booted with our framework.
 If the container is unlocked manually while \wcp is unprotected, the PCRs will indicate such, so \pk remains unusable.
-Thus, for an adversary to access \wcp, they must exploit the running system to bypass the IMA or SELinux policies,
-or otherwise find an exploit to leak \wcp from memory.
+Thus, for an adversary to access \wcp, they must exploit the running system to bypass the IMA or SELinux policies or leak \wcp from memory.
 The relationships of mechanisms in our framework are visually demonstrated in \zcref[S]{fig:framework}.
 
 \begin{figure}
@@ -495,14 +492,9 @@ or tracing \domaint processes. We prevent \verb|LD_PRELOAD| attacks by denying \
 % \end{lstlisting}
 % \end{minted}
 
-We recommend making SELinux state immutable at runtime.
+We recommend making SELinux state immutable at runtime with \texttt{setsebool -P secure\_mode\_policyload on}.
+To make approved changes, the system can be booted with SELinux in permissive mode with boot parameter \texttt{enforcing=0}.
 If this is not feasible, a more complex IMA policy may suffice.
-To disable this to make approved changes, the system can be booted with SELinux in permissive mode (boot parameter \texttt{enforcing=0}).
-% \begin{minted}{bash}
-\begin{lstlisting}[style=bash]
-setsebool -P secure_mode_policyload on
-\end{lstlisting}
-% \end{minted}
 
 We attempted to minimize our reliance on SELinux since policy development can get quite complex,
 especially as support for deny rules was conveniently finalized during our research.
@@ -572,16 +564,14 @@ mkdir -p "$MOUNT_POINT"
 mount "/dev/mapper/$MAPPER_NAME" "$MOUNT_POINT" 
 \end{lstlisting}
 
-Since this script is installed in \initramfs,
-removal of the script or other unapproved modifications of \initramfs will be reflected in a PCR.
-Thus, it is not possible for an adversary to falsify the measurements made by this script. % ! (or its absence).
-
 % ? \subsubsection{Relevant TPM PCRs}
 We store our measurements in PCR 11.
 Other relevant PCRs are 4, 7, 8, 9, and 14 \cite{UAPILinuxTPMPCR}.
 The UEFI measures the bootloader into PCR 4.
 The GRUB bootloader measures the command line arguments into PCR 8,
 and \initramfs and the kernel into PCR 9 \cite{gnu_grub_measured_boot,gentoo_wiki_secure_boot_grub}.
+Since our script is installed in \initramfs,
+its measurements cannot be falsified.
 PCR 7 contains the general Secure Boot state, including the keys used to verify bootup.
 PCR 14 contains measurements of Machine Owner Keys, including those necessary for loading custom IMA policies.
 These measurements are reflected in \zcref[S]{tab:pcr-usage}.
@@ -602,7 +592,7 @@ These measurements are reflected in \zcref[S]{tab:pcr-usage}.
     shim   & 14   & $\hash{\mbox{MOK certificate database}}$   \\
       \addlinespace
     GRUB   & 8   & $\hash{\mbox{kernel command line args}}$    \\
-    GRUB   & 9   & $\hash{\mbox{\initramfs}}$                  \\
+    GRUB   & 9   & $\hash{\mbox{\initramfs with script}}$                  \\
     GRUB   & 9   & $\hash{\mbox{kernel}}$                      \\
       \addlinespace
     Script & 11  & $\hash{\mbox{\systemd}}$                    \\
