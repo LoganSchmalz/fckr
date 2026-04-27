@@ -849,6 +849,14 @@ making our framework stronger than they expected.
 Additionally, SGX is now deprecated on consumer processors without a suitable alternative \cite{Intel:Core12th-SGX-Deprecation:2025}.
 
 \section{Conclusion}
+Our framework provides authentication for OS entities and TPM keys using SELinux, IMA, EVM, LUKS containers, and a custom measurement script.
+We ensure even root-level adversaries cannot use TPM keys without going through our infrastructure,
+unless they develop a novel kernel exploit or leverage a side-channel attack.
+Our framework improves on the existing lack of integration between the TPM and the OS,
+without restricting access to the TPM or using vendor-specific features like TEEs.
+Fundamentally, our framework is modular, and the configuration complexity can be simplified by using alternative mechanisms.
+Futhermore, additions to the kernel and SELinux to support localities or resettable PCRs would improve our framework substantially.
+
 
 %
 % 
