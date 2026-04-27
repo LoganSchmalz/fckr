@@ -11,7 +11,7 @@
 \IfClassLoadedTF{llncs}{\lncstrue}{}
 \IfClassLoadedTF{kuthesis}{\thesistrue}{}
 \usepackage[T1]{fontenc}
-% \usepackage{microtype}
+\usepackage{microtype}
 % \usepackage{amsmath}
 % \usepackage{graphicx}
 \usepackage{booktabs}
@@ -263,12 +263,12 @@ successfully reconstructing a PCR value demonstrates integrity of the recorded m
 For cryptographically secure hash functions like SHA-256,
 finding $y$ such that $x_{new}$ lies about previous measurements is infeasible.
 
-PCR extension is the primary mechanism behind Secure Boot and other measured/trusted boot techniques.
+PCR extension is the primary mechanism supporting Secure Boot and other measured/trusted boot techniques.
 During boot, the Unified Extensible Firmware Interface (UEFI) measures the firmware and the bootloader,
 and the bootloader measures the kernel and parts of the OS.
 Because users cannot interfere with early boot,
-the measurements reliably indicate firmware and software integrity.
-The measurements remain trustworthy at runtime as they are stored in PCRs 0--15, which are non-resettable and persist until reboot \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP}.
+the measurements reliably indicate firmware and software integrity,
+and they remain trustworthy at runtime as they are stored in PCRs 0--15, which are non-resettable and persist until reboot \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP}.
 
 \subsubsection{Loading and Storing Secrets}
 Since the TPM has limited storage, secrets are often unloaded and reloaded,
@@ -436,8 +436,8 @@ The relationships of mechanisms in our framework are visually demonstrated in \z
 %         type user_home_dir_t;
 % }
 
-Our SELinux policy establishes three types:
-\domaint for the \tpmsign executing domain, \exect for the \tpmsign executable, and \filet for protected files.
+Our SELinux policy establishes three types for the executing domain, binary, and protected files:
+\domaint, \exect, and \filet.
 We make \domaint unconfined because we trust \tpmsign, but restricting its permissions is reasonable.
 We also allow the \verb|unconfined_t| domain to transition to \domaint,
 but this should be restricted to specific, trustworthy domains on non-development systems.
@@ -492,7 +492,7 @@ or tracing \domaint processes. We prevent \verb|LD_PRELOAD| attacks by denying \
 % \end{lstlisting}
 % \end{minted}
 
-We recommend making SELinux state immutable at runtime with \texttt{setsebool -P secure\_mode\_policyload on}.
+We also recommend making SELinux state immutable during runtime with \texttt{setsebool -P secure\_mode\_policyload on}.
 To make approved changes, the system can be booted with SELinux in permissive mode with boot parameter \texttt{enforcing=0}.
 If this is not feasible, a more complex IMA policy may suffice.
 
@@ -505,7 +505,7 @@ While SELinux with more boot-time measurements may be sufficient,
 we believe IMA is easy to grasp and adds an additional, more dynamic layer of protection.
 
 \subsection{IMA Policy}
-Our IMA policy imitates the default policies (\verb|tcb|, \verb|appraise_tcb|, and \verb|secure_boot|) \cite{IBM:IMA-Policy},
+Our IMA policy imitates the default policies (\verb|tcb|, \verb|appraise_tcb|, \verb|secure_boot|) \cite{IBM:IMA-Policy},
 then we include the following lines at the beginning to protect the \tpmsign binary and files:
 % \begin{minted}{bash}
 \begin{lstlisting}[style=ima-policy]
@@ -514,7 +514,7 @@ appraise obj_type=tpm_sign_files_t appraise_type=imasig
 \end{lstlisting}
 % \end{minted}
 We require signatures with \verb|appraise_type=imasig|
-to effectively prevent giving the \exect label to a malicious binary,
+to prevent labelling malicious binaries as \exect,
 since all files with that label require an administrator's signature.
 
 IMA policy configuration should be flexible enough to ensure integrity on any desired subset of the filesystem.
@@ -526,11 +526,11 @@ We also want to protect \tpmsign's memory to protect \wcp.
 We trust \tpmsign does not have memory safety issues.
 We previously solved concerns of direct attacks against \tpmsign with SELinux in \zcref[S]{sec:implementation-selinux}.
 \tpmsign further disables coredumps with \verb|prctl|, and disables swapping memory to disk with \verb|mlockall|.
-Important system memory may also be readable from \verb|/proc/kcore|,
+Memory may also be readable from \verb|/proc/kcore|,
 \verb|/dev/mem|, and \verb|/dev/kmem|,
-which can be protected with SELinux or the \verb|lockdown=confidentiality| boot parameter.
+which can be protected with the \verb|lockdown=confidentiality| boot parameter or SELinux.
 These changes protect \wcp from intended debugging features;
-we do not attempt to protect against side-channel attacks.
+we cannot prevent side-channel attacks.
 
 \subsection{Boot-time and Initramfs Measurements}
 We add a script to \initramfs that measures the IMA and SELinux policies
