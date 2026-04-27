@@ -212,7 +212,7 @@ Test
 \fi
 
 \section{Introduction}
-Public key cryptography is a ubiquitous component of modern security: most Internet communication is encrypted and authenticated.  % signed ?
+Public key cryptography is a ubiquitous component of modern security. %: most Internet communication is encrypted and authenticated.  % signed ?
 However, it relies on the assumption that private keys are kept secret.
 In small-scale, personal settings, users can reasonably trust one another to protect their keys.
 In contrast, large-scale systems such as web servers handle thousands of requests per second, and the security of their keys depends entirely on machine configuration and automated processes.
@@ -229,7 +229,7 @@ However, it lacks integration with OS concepts such as users or programs.
 When manual authorization is infeasible,
 the TPM has no built-in mechanism that meaningfully \textit{authenticates} OS entities to restrict key usage.
 At the same time, the TPM supports measured boot which establishes firmware and software integrity.
-Thus, it is possible to ensure proper authentication is enforced at the OS level, before allowing keys to be used.
+Thus, it should be possible to ensure proper authentication is enforced at the OS level, before allowing keys to be used.
 
 % TODO : we present a general methodology and demonstrate how to implement it with...?
 In this work, we demonstrate how to combine existing Linux features---%
@@ -505,8 +505,8 @@ While SELinux with more boot-time measurements may be sufficient,
 we believe IMA is easy to grasp and adds an additional, more dynamic layer of protection.
 
 \subsection{IMA Policy}
-Our IMA policy imitates the default \verb|tcb| and \verb|appraise_tcb| policies \cite{IBM:IMA-Policy},
-then we include the following lines at the beginning to protect the \tpmsign binary and relevant files:
+Our IMA policy imitates the default policies (\verb|tcb|, \verb|appraise_tcb|, and \verb|secure_boot|) \cite{IBM:IMA-Policy},
+then we include the following lines at the beginning to protect the \tpmsign binary and files:
 % \begin{minted}{bash}
 \begin{lstlisting}[style=ima-policy]
 appraise obj_type=tpm_sign_exec_t appraise_type=imasig
@@ -518,9 +518,8 @@ to effectively prevent giving the \exect label to a malicious binary,
 since all files with that label require an administrator's signature.
 
 IMA policy configuration should be flexible enough to ensure integrity on any desired subset of the filesystem.
-Complex policies may be able to provide defense on systems where the SELinux state cannot be immutable,
+Thus, IMA may be able to provide defense in cases where SELinux cannot be immutable,
 at the risk of increased operational complexity.
-At the least, we recommend including the rules of the available default IMA policies \cite{IBM:IMA-Policy}.
 
 \subsection{Memory Protections}
 We also want to protect \tpmsign's memory to protect \wcp.
@@ -724,20 +723,20 @@ measure \systemd (i.e. \verb|appraise_tcb|), this is optional.
 \section{Evaluation and Limitations}
 We experimentally demonstrated the security of our setup:
 \begin{itemize}
-  \item Changing the \initramfs, kernel, IMA policy, SELinux policy, and other items measured into PCRs results in an unapproved boot state.
+  \item Modifying our measurement script, IMA policy, SELinux policy, and other items measured into PCRs results in an unapproved boot state.
   \item When the system is booted in an unapproved state:
         \begin{itemize}
           \item The LUKS container will not open without a password, and \wcp is inaccessible.
                 Thus, \wcp cannot be relabelled.
-          \item If the container is manually unlocked so \wcp is available, the PCRs will not match \wcp and \pk will not be usable.
-          \item It is not possible to corrupt the IMA policy, because custom IMA policies require a signature.
+          \item If the \wcp container is manually unlocked, the PCRs will not match \wcp, so \pk will not be usable.
         \end{itemize}
   \item When the system is booted in an approved state, it is not possible to:
         \begin{itemize}
-          \item Give unapproved programs the \exect label
-          \item Corrupt the \tpmsign binary to leak information
+          \item Corrupt our active policies or measurement script
+          \item Use kernel modules to corrupt the kernel
+          \item Leak \wcp through debugging mechanisms
+          \item Run unapproved programs with the \exect label
           \item Remove the \filet label from \wcp
-          \item Corrupt the IMA or SELinux policies
           \item Access \wcp or use \pk without going through \tpmsign
         \end{itemize}
 \end{itemize}
@@ -762,16 +761,15 @@ We experimentally demonstrated the security of our setup:
 While the LUKS container should protect \wcp sufficiently,
 it is sometimes necessary to manually unlock the LUKS container during an unapproved boot to accomodate a system update.
 It is still beneficial to know \pk cannot be used at that moment,
-so having \wcp also check PCRs provides some extra assurance.
-Note that \wcp is not necessarily unprotected during an unapproved boot if something outside our protections has changed.
+so \wcp also checking PCRs provides some extra assurance.
+Note that \wcp is not necessarily unprotected during an unapproved boot if something other than our protections has changed.
 To exploit a lapse in protection caused by a manual unlock, an adversary must remember the contents of \wcp until the system reboots to the approved state.
 
 There are three primary limitations of our work, two being related to the mechanisms we use.
 The first is protecting a large subset of a system with IMA can make the system annoying to change or update.
 The second is the speed of the TPM.
-Even with optimizations, a TPM can take around 100 milliseconds to produce an elliptic curve signature, with RSA being slower.
-This is impractical for environments requiring high-frequency operations.
-Other hardware security modules or virtual TPMs may improve on this.
+Even with optimizations, a TPM can only perform about 20 elliptic curve signatures per second, and fewer RSA signatures.
+This may be impractically slow, but other hardware security modules or virtual TPMs may improve on this.
 
 The final limitation is if \wcp is leaked to the adversary, then \pk will be persistently available to the adversary until boot PCRs change (e.g. via a system update).
 To defend against this, we rely on the assumption that IMA/SELinux protections cannot be bypassed under an approved boot.
@@ -782,7 +780,7 @@ We addressed trivial exploits (intentional features) that leak arbitrary memory,
 but cannot prevent side-channel attacks, other than making
 \tpmsign short-lived to limit opportunity for such attacks.
 We believe bypassing our framework on an uncorrupted, up-to-date kernel requires a zero-day or otherwise unmitigable exploit.
-We describe a partial mitigation for this limitation in \zcref[S]{sec:variations}.
+We describe potential mitigations for this in \zcref[S]{sec:variations}.
 
 \section{Variations and Future Work}\label{sec:variations}
 We considered two relatively straightforward modifications to our implementation.
@@ -806,15 +804,16 @@ Trusted execution environments (TEEs) are commonly available on enterprise hardw
 and provide strong memory isolation protections that
 may be sufficient to justify storing \wcp or \pk directly in protected memory.
 
-TPM localities or resettable PCRs could be leveraged to significantly harden our framework.
+Although not currently available,
+better support for TPM localities or resettable PCRs in Linux could significantly harden our framework.
 Either option would remove the secrecy requirement for \wcp,
-simplifying the SELinux policy and removing the need for EVM and LUKS.
-However, neither option is currently available.
+allowing us to simplify the SELinux policy and remove EVM and LUKS.
 If TPM localities were protected by SELinux (or equivalent),
 \wcp could require a locality only accessible by \tpmsign under an approved boot.
-Alternatively, the kernel could control resettable PCR 16, and include details about the program currently accessing the TPM in PCR 16.
-Then the PCR 16 value for \tpmsign could be included in \wcp.
-Unfortunately, adversaries capable of corrupting the kernel/SELinux at runtime could still break either strategy.
+Alternatively, the kernel could control resettable PCR 16 to include details about the program currently accessing the TPM,
+with \wcp verifying those details.
+Although we must still assume an adversary cannot corrupt the kernel or SELinux at runtime,
+\wcp not needing to be secret substantially improves our final limitation.
 This is our ideal way forward.
 
 \section{Related Work}
@@ -825,7 +824,7 @@ as well as referencing useful tools.
 K\"uhn et al. \cite{Kuhn:Realizing-Property-Based-Attestation:2007} propose a measured boot strategy indicating the existence of good properties rather than strict binary measurement.
 Their technique could improve flexibility of our boot measurements.
 
-CoCoTPM \cite{Pecholt:CoCoTPM-Secure-vTPM:2022} develops secure virtualized TPMs.
+CoCoTPM \cite{Pecholt:CoCoTPM-Secure-vTPM:2022} develops secure virtual TPMs.
 For setups utilizing TEEs that rely on TPMs, CoCoTPM provides a flexible and robust solution.
 
 Hybrid TPMs \cite{Kim:hTPM-Hybrid-TPM:2019} improve performance over discrete/firmware TPMs,
