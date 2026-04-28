@@ -879,11 +879,11 @@ Here, we discuss some of the nuances for various choices.
 Notably, in almost all of the basic SELinux policy tutorials, these details are not included.
 This is largely because most SELinux policies for applications do not need to be as strict as ours, and instead simply need to follow a relatively standard template.
 
-The first important detail to note is the existence of the SELinux Reference Policy. % TODO : cite
-The Reference Policy serves as the basis for most out-of-the-box SELinux policies and includes some useful macros which are widely used.
+The first important detail to note is the existence of the SELinux Reference Policy \cite{SELinuxProject:2026:ReferencePolicy}.
+The Reference Policy serves as the basis for most SELinux policies and includes some useful macros which are widely used.
 One particular macro is \verb|files_type(x)|, which nominally associates the type \verb|x| with the type \verb|file_type|.
 The \verb|file_type| type includes permissions allowing unconfined contexts to access and manipulate files with label \verb|x|.
-This is entirely reasonable in most situations where an administrator should be easily allowed to manipulate files.
+This is reasonable in most situations where an administrator should be easily allowed to manipulate files.
 However, it is not suitable for developing protections such as ours,
 as unconfined contexts are given the following permissions:
 \begin{lstlisting}[style=selinux-policy]
@@ -892,31 +892,34 @@ allow files_unconfined_type file_type:file { exec_file_perms manage_file_perms m
 % TODO: cite https://github.com/SELinuxProject/refpolicy/blob/2cba8023863718709d0349faf62a9f4da2248a3f/policy/modules/kernel/files.te#L230,
 % TODO: cite https://github.com/SELinuxProject/refpolicy/blob/2cba8023863718709d0349faf62a9f4da2248a3f/policy/support/obj_perm_sets.spt#L158
 We found ourselves concerned with
-\verb|exec_file_perms|, which is a macro that includes \verb|open| and \verb|read|.
+\verb|exec_file_perms|, which is a macro that includes \verb|open| and \verb|read|,
 and with \verb|relabel_file_perms|, which includes \verb|relabelfrom| and \verb|relabelto|.
 In Fedora's \verb|targeted| policy specifically, unconfined contexts are also able to transition to any domain type and inspect the memory of any program. % TODO: improve
-By parsing through these definitions in the Reference Policy, it is possible to recreate them while excluding undesirable permissions.
+The Reference Policy also includes the \verb|unconfined_run_to(x,y)| macro,
+which allows \verb|unconfined_t| domains to transition to domain \verb|x| by executing a file with label \verb|y|.
+Its behavior as used in \zcref[S]{sec:implementation-selinux} is equivalent to the following:
+\begin{lstlisting}[style=selinux-policy]
+type_transition unconfined_t tpm_sign_exec_t : process tpm_sign_t;
+allow unconfined_t tpm_sign_t : process { transition };
+role unconfined_r types tpm_sign_t;
+userdom_use_user_terminals(tpm_sign_t)
+\end{lstlisting}
+After parsing through these macro definitions in the Reference Policy, it is possible to recreate them while excluding undesirable permissions,
+or modify them to replicate their behavior for more appropriate types.
 
 The second important detail to note is the implementation of deny rules in the SELinux Common Intermediate Language.
 Deny rules are capable of overriding existing policy, however they are not available in the high-level SELinux syntax.
 Since deny rules are very explicit, they can compensate for pre-existing SELinux policy modules which leave unintended security holes.
-Thus, they are a suitable alternative to the above process of manually recreating simple things which could be based on existing macros.
-For example, to recreate our policy while making denials explicit:
-\begin{lstlisting}[style=selinux-cil]
-(deny domain tpm_sign_exec_t (file (relabelto)))
-(deny domain tpm_sign_file_t (file (relabelfrom)))
-
-(typeattribute tpm_sign_file_deny)
-(typeattributeset tpm_sign_file_deny (not tpm_sign_t))
-(deny tpm_sign_file_deny tpm_sign_file_t (file (read)))
-\end{lstlisting}
+Thus, they are a suitable alternative to the above process of manually recreating simple things which could be based on existing macros,
+as shown in \zcref[S]{sec:implementation-selinux}.
 The \verb|typeattribute|/\verb|typeattributeset| declaration is necessary to determine which types should be denied in the last deny rule
 via logical expressions like \verb|not|, \verb|and|, \verb|or|, etc.
 This is because, in CIL policy, rules (\verb|allow|, \verb|deny|, etc.) must take an identifier in the first and second arguments.
 In our policy, this allows us to deny reads from every domain except \domaint.
 
-% TODO: discussion about unconfined_run_to
-% TODO: Discussion about neverallow rules
+Many sources refer to \verb|neverallow| rules in SELinux, and some incorrectly imply they behave similarly to \verb|deny| rules.
+In reality, neverallow rules are compile-time checks that accidental allowances have not been made.
+However, sometimes they get missed depending on the compilation setup, so no warning is produced that the neverallow rule is violated.
 
 \section{Setting up IMA}
 Setting up IMA is a complicated process on Fedora.
@@ -928,7 +931,7 @@ Dracut has a standard module for loading IMA/EVM keys and enabling IMA/EVM durin
 It is necessary to remove the \verb|ima-policy-load.sh| script from this module, since Fedora's SELinux policy is not designed to load during boot and our IMA policy relies on the SELinux policy.
 The \verb|integrity| module loads IMA keys from \verb|/etc/keys/ima/| as described in \cite{IBM:IMA-utilities-evmctl}.
 Before that, it loads the EVM keys from \verb|/etc/keys/evm/|;
-thus, another key with a similar setup (or the same key as generated for IMA in the ``IMA Signing Key and Certificate'' section) must also be placed there to serve as the EVM signature verification key.
+thus, another key with a similar setup (or the same key) as generated for IMA in the ``IMA Signing Key and Certificate'' section must also be placed there to serve as the EVM signature verification key.
 
 As discussed briefly in \zcref[S]{sec:implementation-details}, it seems best on Fedora to enable EVM HMACs as well.
 This requires creating a kernel masterkey (we make a trusted masterkey since we are using a TPM) and making a child encrypted EVM HMAC key.
