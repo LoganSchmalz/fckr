@@ -345,7 +345,7 @@
   \begin{center}
   \vspace*{4\baselineskip}
     The {\@papertype} Committee for {\@author} certifies \par
-    that this is the approved version of the following \MakeLowercase{\@papertype} : \par
+    that this is the approved version of the following \MakeLowercase{\@papertype}: \par
     \par\vspace{24pt}%
     {\Large {\@title} \par}
   \vspace*{8\baselineskip}
