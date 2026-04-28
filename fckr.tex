@@ -436,10 +436,10 @@ The relationships of mechanisms in our framework are visually demonstrated in \z
 %         type user_home_dir_t;
 % }
 
-Our SELinux policy establishes three types for the executing domain, binary, and protected files:
+Our SELinux policy establishes three types for \tpmsign's executing domain, binary, and files:
 \domaint, \exect, and \filet.
 We make \domaint unconfined because we trust \tpmsign, but restricting its permissions is reasonable.
-We also allow the \verb|unconfined_t| domain to transition to \domaint,
+We also allow the \verb|unconfined_t| domain, the standard domain for logged-in users, to launch \tpmsign,
 but this should be restricted to specific, trustworthy domains on non-development systems.
 % \begin{minted}{text}
 \begin{lstlisting}[style=selinux-policy]
@@ -843,7 +843,7 @@ However, it does not address our direct concern that a malicious entity,
 through exploits undetected by IMA, may access the wildcard policy and use the key.
 
 Wagner et al. \cite{Wagner:Distributed-Usage-Control-SGX:2018} develop a similar technique to ours using the TPM and the Intel Software Guard Extensions (SGX) TEE.
-They acknowledge the potential existence of a TPM-based technique using IMA, EVM, and access controls,
+They acknowledge the potential existence of a TPM-only technique using IMA, EVM, and access controls,
 but they miss our realizations that wildcard policies can be treated as secrets and LUKS can protect them during unapproved boots,
 making our framework stronger than they expected.
 Additionally, SGX is now deprecated on consumer processors without a suitable alternative \cite{Intel:Core12th-SGX-Deprecation:2025}.
