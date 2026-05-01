@@ -810,7 +810,7 @@ Either option would remove the secrecy requirement for \wcp,
 allowing us to simplify the SELinux policy and remove EVM and LUKS.
 If TPM localities were protected by SELinux (or equivalent),
 \wcp could require a locality only accessible by \tpmsign under an approved boot.
-Alternatively, the kernel could control resettable PCR 16 to include details about the program currently accessing the TPM,
+Alternatively, the kernel could control resettable PCR 23 to include details about the program currently accessing the TPM,
 with \wcp verifying those details.
 Although we must still assume an adversary cannot corrupt the kernel or SELinux at runtime,
 \wcp not needing to be secret substantially improves our final limitation.
