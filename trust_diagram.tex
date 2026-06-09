@@ -16,19 +16,19 @@
 \matrix (m) [
     matrix of nodes,
     nodes={draw, box, text width=width("SELinux"), align=flush center},
-    row sep=0.1cm,
-] at (-2,-3) {
+    row sep=.25em,
+] at (-5.5em,-8.25em) {
     |(IMA)| IMA\strut \\
     |(SELinux)| SELinux\strut \\
     |(EVM)| EVM\strut \\
   };
-\node [draw, gray, dashed, thick, inner sep=9pt, fit=(m),
+\node [draw, gray, dashed, thick, inner sep=.95em, fit=(m),
         label={[gray, anchor=north west]north west:Kernel}] (Kernel) {};
 
-\node [box] (WCP) at (2.25,-3.7) [draw] {\wcp\strut};
-\node [draw, DarkOrange, dashed, thick, fit=(WCP), inner sep=13pt,
+\node [box] (WCP) at (6em,-10.25em) [draw] {\wcp\strut};
+\node [draw, DarkOrange, dashed, thick, fit=(WCP), inner sep=1.3em,
         label={[DarkOrange, anchor=south east]south east:LUKS}] (LUKS) {};
-\node [box, above=0.9 of WCP] (tpm_sign) [draw] {\tpmsign\strut};
+\node [box, above=2em of WCP] (tpm_sign) [draw] {\tpmsign\strut};
 
 \draw[required_by] (Kernel) |- (PCRs);
 \draw[required_by, dashed] (PCRs) -- (WCP);
