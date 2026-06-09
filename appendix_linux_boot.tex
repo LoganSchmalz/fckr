@@ -1,0 +1,7 @@
+There are five major components that are involved in booting a Linux system:
+the Unified Extensible Firmware Interface (UEFI) firmware, the bootloader, the \initramfs (initial RAM filesystem), the kernel, and the root filesystem.
+When a machine is booted, it first enters the UEFI firmware.
+The firmware then searches for and loads the bootloader, which loads the kernel and the \initramfs.
+The \initramfs is an archive file that contains some basic Linux utilities, drivers, and scripts to prepare the system to load the root filesystem.
+When the \initramfs phase is finished, it executes \verb|switch_root| to switch to the root filesystem,
+which is the typical filesystem with all the user's files and installed programs.

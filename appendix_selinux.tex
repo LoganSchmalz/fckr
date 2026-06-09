@@ -1,0 +1,79 @@
+SELinux uses various terms to distinguish kinds of components during runtime.
+\begin{itemize}
+  \item The \emph{object} of an action, e.g.\ a file being read, has an assigned \emph{type}.
+  \item The object also has a \emph{class}, e.g.\ file, directory, socket, or process.
+  \item The \emph{subject} of an action, e.g.\ the program, runs with a \emph{domain} type.
+  \item When loaded, objects and subjects have a security \emph{context}, which includes a \emph{user}, \emph{role}, \emph{type}, and optionally a \emph{sensitivity} and a \emph{category}.
+    \begin{itemize}
+        \item Users are not standard Linux users, but are types assigned to users that cannot be overridden, e.g.\ \verb|staff_u| and \verb|system_u|.
+        \item Users have roles, e.g.\ \verb|staff_u| may have the \verb|sysadm_r| administrator role.
+      \item Sensitivities and categories are used for clearance levels in Multi-Level/Category Security schemes, which are not relevant for our work.
+    \end{itemize}
+  \item \emph{Labels} assigned to files on the filesystem indicate a context, e.g. a file's type or, indirectly, a program's domain.
+  \item Domains may \emph{transition} to other domains based on policy rules.
+  \item Types may be associated with type \emph{attributes}, which act as an inheritance mechanism.
+\end{itemize}
+
+There may be multiple SELinux policy implementations that can accomplish the same rules.
+This nuance is not discussed in most basic SELinux policy tutorials,
+largely because SELinux policies for most applications do not need to be as strict as ours and follow a relatively standard template.
+
+SELinux has three distinct formats for its policy: a high-level language (HLL), the Common Intermediate Language (CIL), and binary.
+The binary format is primarily used for compiled runtime policies.
+The HLL and CIL formats are intended to be human-readable and compiled to the binary format.
+The standard SELinux tooling converts the HLL to CIL for compilation;
+this makes it easy to combine HLL policy with CIL policy manually.
+
+The main factor influencing the complexity of SELinux policy is the Reference Policy \cite{SELinuxProject:2026:ReferencePolicy}.
+The Reference Policy is written in the HLL and serves as the basis for most SELinux policies.
+It includes some widely useful macros that set up commonly necessary rules,
+and it includes conventional configuration for things like administrative users and common Linux programs.
+In the Reference Policy, \emph{unconfined} contexts are essentially unrestricted by SELinux.
+We address this lack of restrictions in our custom policy (\zcref[S]{sec:implementation-selinux}).
+
+A specific example of a macro included in the Reference Policy is \verb|files_type(x)|, which nominally associates the type \verb|x| with the \verb|file_type| attribute.
+The Reference Policy then further includes permissions allowing unconfined contexts to access and manipulate files with \verb|file_type| label \verb|x|.
+This is reasonable in most situations where an administrator should be easily allowed to manipulate files.
+However, this is not good for our work, as unconfined contexts are given the following extensive set of permissions:
+\begin{lstlisting}[style=selinux-policy]
+allow files_unconfined_type file_type:file { exec_file_perms manage_file_perms mounton quotaon relabel_file_perms watch watch_mount watch_reads watch_sb watch_with_perm };
+\end{lstlisting}
+% TODO: cite https://github.com/SELinuxProject/refpolicy/blob/2cba8023863718709d0349faf62a9f4da2248a3f/policy/modules/kernel/files.te#L230,
+% TODO: cite https://github.com/SELinuxProject/refpolicy/blob/2cba8023863718709d0349faf62a9f4da2248a3f/policy/support/obj_perm_sets.spt#L158
+We found ourselves concerned with
+\verb|exec_file_perms|, which is a macro that includes \verb|open| and \verb|read|,
+and with \verb|relabel_file_perms|, which includes \verb|relabelfrom| and \verb|relabelto|.
+
+Another macro in the Reference Policy is \verb|unconfined_run_to(domain_t, execfile_t)|,
+which allows \verb|unconfined_t| domains to transition to \verb|domain_t| by executing a file with label \verb|execfile_t|.
+It produces the following rules:
+\begin{lstlisting}[style=selinux-policy]
+type_transition unconfined_t execfile_t : process domain_t;
+allow unconfined_t domain_t : process { transition };
+role unconfined_r types domain_t;
+userdom_use_user_terminals(domain_t)
+\end{lstlisting}
+
+In Fedora's \verb|targeted| policy, which is based on the Reference Policy, % TODO: cite
+unconfined contexts are also able to transition to any domain type and inspect the memory of any program. % TODO: improve
+
+After parsing through these highly-permissive macro definitions in the Reference Policy, it is possible to recreate them while excluding undesirable permissions,
+or modify them to replicate their behavior for other types.
+However, this can be inconvenient since these details are hidden in the source of the Reference Policy.
+
+% TODO : cite addition of deny rules
+The recent addition of \emph{deny rules} in CIL makes a positive step in this regard.
+Deny rules explicitly restrict permissions and are capable of overriding existing policy.
+They can easily compensate for pre-existing SELinux policy modules which leave unintended security holes,
+like policies that use the previously mentioned macros.
+This makes deny rules a suitable alternative to manually recreating existing policies with minor modifications,
+as shown in \zcref[S]{sec:implementation-selinux}.
+% TODO : flesh this out more clearly
+% The \verb|typeattribute|/\verb|typeattributeset| declaration is necessary to determine which types should be denied in the last deny rule
+% via logical expressions like \verb|not|, \verb|and|, \verb|or|, etc.
+% This is because, in CIL policy, rules (\verb|allow|, \verb|deny|, etc.) must take an identifier in the first and second arguments.
+% In our policy, this allows us to deny reads from every domain except \domaint.
+
+Some sources refer to \emph{neverallow} rules and incorrectly imply they behave similarly to \emph{deny} rules.
+In reality, neverallow rules are compile-time checks that are supposed to trigger warnings upon violation by allow rules.
+However, sometimes they get missed depending on the compilation setup and no warning is produced.
