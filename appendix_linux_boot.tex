@@ -5,3 +5,13 @@ The firmware then searches for and loads the bootloader, which loads the kernel 
 The \initramfs is an archive file that contains some basic Linux utilities, drivers, and scripts to prepare the system to load the root filesystem.
 When the \initramfs phase is finished, it executes \verb|switch_root| to switch to the root filesystem,
 which is the typical filesystem with all the user's files and installed programs.
+
+Many Linux distributions, including Fedora, use \shim \cite{rhboot:2026:shim}, a simple Microsoft-signed bootloader, to facilitate Secure Boot support.
+Most UEFI platforms come with Microsoft's certificates pre-installed, but do not include other third-party certificates.
+Thus, \shim contains its own certificate database to verify the real bootloader's signature,
+which on Fedora is GRUB \cite{gnu_grub}.
+This does not meaningfully impact the security of Linux boot.
+As an alternative, administrators may manually sign the bootloader or a unified kernel image (UKI) \cite{gentoo_wiki_secure_boot,gentoo_wiki_secure_boot_grub}.
+
+Haas and Pirker \cite{Haas:Linux-Boot-Integrity:2024} provide a supplementary, broader overview of the Linux boot process and integrity.
+They present more detail on various Linux boot setups, explain how they interact with Secure Boot, and reference relevant tools.

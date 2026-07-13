@@ -4,9 +4,9 @@
   Against a highly-capable adversary it is ideal to store secrets outside of main memory,
   which is easy on general purpose systems with the now widely-available Trusted Platform Module (TPM) 2.0.
   However, the lack of integration between the TPM and the OS makes protecting secrets with automated availability needs difficult.
-  Using only existing mechanisms available on Linux: SELinux, Integrity Measurement Architecture (IMA), Extended Verification Module (EVM), and Linux Unified Key Setup (LUKS),
-  we develop a strategy to authenticate specific OS entities to protect TPM-stored secrets,
-  without limiting access to the TPM in general.
+  We develop a strategy to authenticate OS entities and protect TPM-stored secrets
+  without restricting access to the TPM,
+  using standard features available on Linux---SELinux, Integrity Measurement Architecture (IMA), Extended Verification Module (EVM), and Linux Unified Key Setup (LUKS).
 
   \iflncs\keywords{First keyword \and Second keyword \and Another keyword.}\fi
 \end{abstract}

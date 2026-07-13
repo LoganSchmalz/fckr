@@ -188,7 +188,7 @@
 \input{abstract}
 \longstyle
 \begin{acknowledgements}
-Test
+I owe special thanks to my parents, whose continued support has allowed me to pursue this work.
 \end{acknowledgements}
 \tableofcontents{}
 \listoffigures
@@ -210,20 +210,19 @@ Thus, the security of their keys depends entirely on machine configuration and a
 A root-level compromise to such systems is catastrophic for the security of keys.
 This raises a critical question: how can we protect a secret, e.g. a private key, on a general-purpose system from a root-level attacker such that only the owner of the secret can use it?
 
-We present a software-level framework around the Trusted Platform Module (TPM) 2.0 hardware security module to answer this question.
+We present a software-level framework around the Trusted Platform Module (TPM) 2.0 hardware security module \cite{Trusted-Computing-Group:2025:TPM-2.0-Library} to answer this question.
 The TPM provides a root of trust of storage for secrets and cryptographic keys,
 and can perform cryptographic operations outside of main system memory so keys are never directly exposed.
 The TPM supports authorization checks to access these secrets and keys.
-However, it notably lacks direct integration with OS concepts such as users or programs
+However, it notably lacks integration with OS concepts such as users or programs
 and has no built-in mechanism that meaningfully \emph{authenticates} such OS entities to restrict key usage.
-%We discuss these details at depth in \zcref[S]{sec:key-protections}.
-This lack of direct integration is the key problem our framework addresses.
+This lack of integration is the key problem our framework addresses.
 
 At the same time, the TPM supports measured boot which establishes firmware and software integrity.
 Thus, we can measure our software-level authentication framework to ensure it is being enforced before allowing keys to be used.
-Our authentication framework uses mechanisms that are built into the Linux kernel: Security-Enhanced Linux (SELinux),
-the Linux Integrity Measurement Architecture (IMA),
-the Extended Verification Module (EVM), and Linux Unified Key Setup (LUKS) encryption.
+Our authentication framework uses mechanisms that are built into the Linux kernel: Security-Enhanced Linux (SELinux) \cite{Loscocco:2001:SELinux},
+the Linux Integrity Measurement Architecture (IMA) \cite{Sailer:2004:Integrity-Measurement-Architecture}
+the Extended Verification Module (EVM) \cite{Zohar:EVM:2010} and Linux Unified Key Setup (LUKS) \cite{Fruhwirth:LUKS:2005} encryption.
 Other than using the commonly-available TPM for key storage and measured boot,
 we use no specialized hardware nor custom kernel modifications.
 We provide background on these mechanisms in \zcref[S]{sec:background}.
@@ -231,13 +230,12 @@ We provide background on these mechanisms in \zcref[S]{sec:background}.
 In this work, we develop a strategy against a root-level adversary (\zcref[S]{sec:adversary-strategy})
 and demonstrate how to combine these existing Linux features---SELinux, IMA, EVM, and LUKS---with
 measured boot and TPM policy authorization to enforce fine-grained access control to TPM-resident secrets
-to implement that strategy (\zcref[S]{sec:implementation}) on Fedora Linux. % TODO find a place to cite fedora??
+to implement that strategy (\zcref[S]{sec:implementation}) on Fedora Linux \cite{FedoraLinux}. 
 We demonstrate our framework's successful protection of secrets when the Linux kernel is uncorrupted (\zcref[S]{sec:evaluation}).
 We discuss limitations (\zcref[S]{sec:limitations}) of our framework, primarily related to the effectiveness a deep kernel corruption or attacks capable of leaking arbitrary memory.
-% TODO fix
 We finally describe variations (\zcref[S]{sec:variations}) of our setup, 
 including modifications that could reduce the complexity of our framework,
-as well as our recommendation that deeper kernel support for underutilized TPM features could enable stronger future designs.
+which leads to our recommendation that deeper kernel support for underutilized TPM features could enable stronger designs.
 
 \section{Adversary and Strategy}\label{sec:adversary-strategy}
 Our motivating example is producing cryptographic signatures,
@@ -330,7 +328,7 @@ but such secrets have no inherent protection against disclosure.
 PCRs effectively limit key usage to a pre-approved boot configuration.
 Importantly, keys are tied to their authorization mechanism.
 For password-authorized keys, it is possible to change the password.
-For simple PCR-based authorization,
+However, for simple PCR-based authorization,
 the approved values cannot be changed,
 which is problematic for system updates \cite{Arthur:2015:A-Practical-Guide-to-TPM-2.0-Certifying-Keys,Trusted-Computing-Group:2025:TCG-TPM-2.0-Part1-Architecture}.
 
@@ -356,7 +354,7 @@ However, the TPM trusts the OS to control localities, and there is no existing m
 Furthermore, while technically feasible, (ab)using localities in this way seems questionable according to the standards set in current specification documents.
 Alternatively, a resettable PCR could be controlled by the OS to indicate the entity currently accessing the key.
 There is also no mechanism to accomplish this currently implemented in Linux, but this would be valid according to specifications.
-We view implementing either of these proposed improvements as future work due to requiring more advanced OS-level infrastructure, and discuss the benefits to our framework in \zcref[S]{sec:variations}.
+We designate these proposals as future work since they involve bespoke kernel-level modifications, and discuss the benefits to our framework in \zcref[S]{sec:variations}.
 
 \subsection{Security-Enhanced Linux (SELinux)}
 SELinux \cite{Loscocco:2001:SELinux} provides mandatory access control on Linux.
@@ -391,10 +389,10 @@ To switch to \fix mode from \appraise mode to update hashes, a reboot is require
 In contrast, signatures can be updated safely in \appraise mode because the administrator's signing key remains protected.
 This makes it easier to install and update programs and files.
 
-By default, some distributions require an administrator to sign any custom IMA policies and public keys.
-This involves adding a key certificate to the UEFI Machine Owner Keys, then signing IMA policies and X.509 keys on the filesystem with the appropriate private key.
 The first custom IMA policy that is loaded overwrites any default policies.
 Afterwards, the custom IMA policy cannot be overwritten, only appended to.
+When a file is being checked by IMA, the first matching rule in the policy is applied.
+Thus, loading any more policies can only increase strictness of the running policy.
 
 \subsection{Extended Verification Module (EVM)}
 \label{sec:evm}
@@ -524,7 +522,7 @@ We recommend making SELinux state immutable during runtime with \texttt{setseboo
 To make approved changes, the system can be booted with SELinux in permissive mode with boot parameter \texttt{enforcing=0}.
 If this is not feasible, a more complex IMA policy may suffice.
 
-\subsection{IMA Policy}
+\subsection{IMA Policy}\label{sec:implementation-ima}
 While SELinux policy with extensive boot-time measurements may be sufficient to ensure integrity of a system,
 we attempted to minimize our reliance on SELinux due to its configuration complexity.
 Thus, we turned to IMA (and EVM, \zcref[S]{sec:implementation-evm}) to protect the integrity of the \tpmsign, \wcp, and the rest of our system.
@@ -562,15 +560,25 @@ we cannot prevent side-channel attacks.
 \subsection{Boot-time and Initramfs Measurements}\label{sec:script}
 We add a script to \initramfs that measures the IMA and SELinux policies
 as well as the \systemd init binary on the root filesystem during boot.
+These measurements indicate whether our framework is properly enabled.
 The script then attempts to unlock the LUKS container which contains \wcp.
 
-Our policy and \systemd measurements are important, as they indicate whether our framework is properly enabled.
 SELinux policy is uniquely tricky to measure,
 as it does not load from a deterministic path, but is instead dependent on the SELinux configuration and newest SELinux policy version the kernel supports.
-To solve this easily, we verify that there is only one possible policy file that can be loaded and measure that one.
-The order of the three measurements for \systemd, IMA policy, and SELinux policy is inconsequential.
-Finally, our script locks the previous PCRs by extending an extra string after completion.
-This prevents an adversary from deleting files to skip measurements in order to falsify the measurements once the system is finished booting.
+To solve this easily, we check that only one possible policy file can be loaded, then measure it.
+We also measure the SELinux enforcing state according to the configuration file.
+
+The order of the measurements for \systemd, IMA policy, and SELinux policy is inconsequential.
+Our script indicates the completion of measurements by writing an extra string to the PCR.
+This prevents an adversary from deleting files to skip and then falsify measurements after boot.
+
+It should be possible to load the SELinux and IMA policies from the measurement script,
+however, Fedora's built-in SELinux policy is not designed to be loaded before \verb|switch_root| occurs. 
+Problematically, IMA policies containing SELinux labels will then fail to load.
+Thus, to ensure the policies are loaded correctly after \verb|switch_root|, we measure the \systemd init binary in our \initramfs script in \zcref[S]{sec:script} as \systemd is responsible for loading the policies in this case.
+When the measurement script loads the policies, or when the initial IMA policies
+measure \systemd (i.e.\ \verb|appraise_tcb|), this is optional.
+
 % \begin{minted}{bash}
 \begin{lstlisting}[style=bash]
 #!/bin/sh
@@ -579,7 +587,9 @@ IMA_POL="$NEWROOT/etc/ima/ima-policy"
 tpm2_pcrextend 11:sha256="$(sha256sum "$INIT" | cut -d' ' -f1)"
 tpm2_pcrextend 11:sha256="$(sha256sum "$IMA_POL" | cut -d' ' -f1)"
 
-SEL_TYPE="$(sed -n 's/^SELINUXTYPE=\(.*\)/\1/p' /etc/selinux/config)"
+SEL_ENF="$(sed -n 's/^SELINUX=\(.*\)/\1/p' $NEWROOT/etc/selinux/config)"
+tpm2_pcrextend 11:sha256="$(echo "$SEL_ENF" | sha256sum | cut -d' ' -f1)"
+SEL_TYPE="$(sed -n 's/^SELINUXTYPE=\(.*\)/\1/p' $NEWROOT/etc/selinux/config)"
 SEL_DIR="$NEWROOT/etc/selinux/$SEL_TYPE/policy"
 count="$(find "$SEL_DIR" -maxdepth 1 -name "policy.*" -print0 | grep -zc .)"
 if [ "$count" -eq 1 ]; then
@@ -609,11 +619,11 @@ mount "/dev/mapper/$MAPPER_NAME" "$MOUNT_POINT"
 
 Our script stores measurements in PCR 11.
 Other relevant PCRs are 4, 7, 8, 9, and 14 \cite{UAPILinuxTPMPCR}.
+Only the usage of PCRs 0--7 is defined by TCG standards, and usage of PCRs 8--15 may vary for other boot setups \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP}.
 The UEFI measures the bootloader into PCR 4.
 The GRUB bootloader measures the command line arguments into PCR 8,
 and \initramfs and the kernel into PCR 9 \cite{gnu_grub_measured_boot,gentoo_wiki_secure_boot_grub}.
-Since our script is installed in \initramfs,
-its measurements cannot be falsified.
+Since our script is installed in \initramfs, its measurements stored in PCR 11 cannot be falsified.
 PCR 7 contains the general Secure Boot state, including the keys used to verify bootup.
 PCR 14 contains measurements of Machine Owner Keys, including those necessary for loading custom IMA policies.
 These measurements are listed in the order they are taken in \zcref[S]{tab:pcr-usage}.
@@ -629,7 +639,7 @@ providing assurance that each individual measurement is trustworthy.
     \toprule
     Measurer & PCR & Value                                       \\
     \midrule
-    UEFI   & 4   & $\hash{\mbox{\shim}}$$^\dagger$              \\
+    UEFI   & 4   & $\hash{\mbox{\shim}}$              \\
     UEFI   & 7   & $\hash{\mbox{{Secure Boot configuration}}}$ \\
     \shim   & 4   & $\hash{\mbox{GRUB}}$                        \\
     \shim   & 7   & $\hash{\mbox{\shim certificate database}}$   \\
@@ -645,8 +655,6 @@ providing assurance that each individual measurement is trustworthy.
     Script & 11  & $\hash{\mbox{\texttt{{\textquotesingle}done\textquotesingle}}}$             \\
     \bottomrule
   \end{tabular}
-  \\
-  $^\dagger$ See \zcref[S]{sec:implementation-details}.
 \end{table}
 
 \subsection{TPM Key Setup}
@@ -721,6 +729,10 @@ This makes it impossible to change the SELinux labels, file owners, or POSIX per
 In a real environment, the private key should be held on a separate machine
 and the signature should be assigned manually via \verb|setfattr|.
 
+We found enabling EVM without HMAC support is not well-supported on Fedora.
+As mentioned in \zcref[S]{sec:evm}, this means EVM may replace non-portable signatures with HMACs, allowing metadata to be modified.
+In this case, using a \emph{portable} EVM signature on \wcp is absolutely necessary.
+
 \subsection{LUKS Setup}
 % TODO : maybe cite something here?
 We set up the \vault LUKS container that unlocks with the same PCRs as \wcp.
@@ -740,32 +752,6 @@ mkdir -p /mnt/vault/
 mount /dev/mapper/vault_mapper /mnt/vault
 \end{lstlisting}
 % \end{minted}
-
-\subsection{Deployment Considerations}\label{sec:implementation-details}
-Our development system uses Fedora 42 with an out-of-the-box kernel.
-In the following paragraphs, we provide some insight on our experience with Fedora and how it influenced some of our design decisions.
-This discussion may also be helpful for modifying our implementation on Fedora or other distributions.
-
-Many Linux distributions use \shim, a simple Microsoft-signed bootloader, to facilitate Secure Boot support \cite{rhboot:2026:shim}.
-\shim contains its own certificate database to check signatures, so
-the UEFI measures \shim, and \shim measures the real bootloader (e.g.\ GRUB).
-This does not affect the security of our framework, as the chain of trust as described in \zcref[S]{sec:script} remains intact.
-Alternatively, administrators may manually sign the bootloader or use a unified kernel image (UKI) \cite{gentoo_wiki_secure_boot,gentoo_wiki_secure_boot_grub}.
-
-While PCR 11 is free on Fedora when using the GRUB bootloader, only the usage of PCRs 0--7 is defined by TCG standards.
-Usage of PCRs 8--15 may vary for other boot setups \cite{Trusted-Computing-Group:2023:TCG-PC-Client-PFP,UAPILinuxTPMPCR}.
-
-We found enabling EVM without HMAC support prevents Fedora from booting due to its reliance on dynamically-modified files.
-As mentioned in \zcref[S]{sec:evm}, this means EVM may replace non-portable signatures with HMACs, allowing metadata to be modified.
-In this case, using a \emph{portable} EVM signature on \wcp is absolutely necessary.
-
-Finally, on some distributions it should be possible to load the SELinux and IMA policies from the measurement script.
-However, Fedora's built-in SELinux policy is not designed to support loading before \verb|switch_root| moves the system from \initramfs to the real root filesystem.
-Problematically, IMA policies containing SELinux labels will fail to load if the SELinux policy is not loaded beforehand.
-Thus, to ensure the policies are loaded correctly after \verb|switch_root|, we measure the \systemd init binary in our \initramfs script in \zcref[S]{sec:script} as \systemd is responsible for loading the policies in this case.
-When the measurement script loads the policies, or when the initial IMA policies
-measure \systemd (i.e.\ \verb|appraise_tcb|), this is optional.
-
 
 \section{Evaluation}\label{sec:evaluation}
 We experimentally demonstrated the security of our key protections.
@@ -878,10 +864,6 @@ Although we must still assume an adversary cannot corrupt the kernel or SELinux 
 Pursuing one of these options is our ideal way forward.
 
 \section{Related Work}
-Haas and Pirker \cite{Haas:Linux-Boot-Integrity:2024} provide a broader overview of the Linux measured boot process.
-Their work is supplemental to our brief background, explaining how various Linux boot setups interact with Secure Boot,
-as well as referencing useful tools.
-
 K\"uhn et al. \cite{Kuhn:Realizing-Property-Based-Attestation:2007} propose a measured boot strategy indicating the existence of good properties rather than strict binary measurement.
 Their technique could improve flexibility of our boot measurements.
 
@@ -889,10 +871,9 @@ CoCoTPM \cite{Pecholt:CoCoTPM-Secure-vTPM:2022} and Hybrid TPM \cite{Kim:hTPM-Hy
 CoCoTPM develops secure virtual TPMs, useful for situations where multiple TEEs rely on a TPM.
 Hybrid TPM develops a strategy to combine hardware and software TPMs to improve TPM performance, which is a limitation of the TPM in our usecase.
 
-% TODO: reword
 SeCReT \cite{Jang:SeCReT:2015} establishes a secure communication channel between the ARM TrustZone TEE and the rich execution environment.
 To protect session keys, they make minor modifications to the Linux kernel to flush keys from memory and protect page accesses.
-This strategy is potentially adaptable to our framework and would improve our memory protection.
+This strategy is potentially adaptable to improve our memory protection.
 
 In RESEKRA \cite{Gomez:RESEKRA:2022},
 a third-party verifies the IMA measurement log/PCR to determine integrity of programs on a system,
@@ -914,7 +895,7 @@ without restricting access to the TPM or using vendor-specific features like TEE
 Since the TPM does not have an equivalent authentication mechanism built-in,
 our framework substantially improves key security, and thus trustworthiness, against root-level adversaries,
 unless they can develop a novel kernel exploit or leverage a side-channel attack.
-Fundamentally, our framework is modular such that the configuration complexity may be simplified by using alternative mechanisms,
+Fundamentally, our framework is modular such that the configuration complexity may be simplified using alternative mechanisms,
 and implementing support for underutilized TPM features could further improve the security of keys.
 
 %
