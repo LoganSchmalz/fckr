@@ -1,6 +1,5 @@
 \documentclass[
   notes,
-  compress
 ]{beamer}
 
 % --- Choose Theme ---
@@ -11,29 +10,18 @@
 
 \usepackage{pifont}
 \usepackage{amsmath}
-\usepackage{ stmaryrd }
 \usepackage{graphicx}
 \usepackage{tikz}
 \usetikzlibrary{shapes, arrows.meta, positioning, cd, tikzmark, fit, backgrounds} % Added cd for diagrams
 \usepackage{microtype}
-\usepackage{tabularx}
 \usepackage{booktabs}
 \usepackage{xspace}
-% \usepackage{nameref} % Beamer handles references differently, might not be needed or cause conflicts
 \usepackage[svgnames]{xcolor}
-\usepackage{proof} % For inference rules
-% \usepackage{minted} % Using standard listings/verbatim for simplicity in Beamer
-% \setminted{bgcolor=Beige,autogobble,breaklines,breakafter={​}}
 \usepackage{listings}
-\usepackage{zref}
-\usepackage{zref-clever}
 \renewcommand\UrlFont{\color{blue}\rmfamily}
-\usepackage{algorithm}
-\usepackage{algpseudocode}
-\usepackage{pgfgantt}
 \usepackage[numbers,sort&compress]{natbib} % For numbered citations
-\usepackage{minted}
-\setminted{bgcolor=Beige,autogobble,breaklines,breakafter={​}}
+
+\setbeameroption{show notes on second screen=right}
 
 % PREAMBLE STUFF
 \input{../vars}
@@ -53,11 +41,14 @@
 \begin{frame}
   \titlepage
 \end{frame}
-\note{
-  \textbf{So I want to start off with a motivation...}
-}
 
 \section{Introduction}
+\begin{NoHyper}
+\note{Hello everyone, thanks for being here, welcome to my master's thesis defense.
+Today I will be presenting a technique to protect private keys on Linux systems,
+hence the title, A Framework for Controlled Key Release.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Introduction}
@@ -68,6 +59,16 @@
     \item If an adversary has extensive, root-level access to a system, how do we protect the keys?
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  So, the modern Internet relies heavily on public key cryptography.
+  However, a big part of public key cryptography is assuming that private keys are only used by their owner.
+  Thus, keys need to be protected from adversaries that compromise systems,
+  otherwise they can use the key and pretend to be the key's rightful owner.
+  This brings us to an important question: how do we protect keys from adversaries with extensive, root-level access to a system?
+  This is what my work provides a solution for.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Introduction}
@@ -81,11 +82,28 @@
     \item The TPM is also widely used for measured boot to measure the integrity of the OS
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  One helpful step in protecting keys is storing them in separate memory,
+  which can be easily accomplished these days with the Trusted Platform Module 2.0, or TPM.
+  The TPM stores keys and can also use them directly without exposing them to the main system memory.
+  However, the TPM lacks tight integration with operating system concepts like users and programs,
+  so there is no built in way to distinguish these entities using the TPM.
+  In other words, any user or program with access to the TPM can make any request to the TPM.
+  Fortunately, the TPM is also widely used for measured boot which measures the integrity of the operating system.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Introduction}
   We present a software-level framework that enforces OS-level authentication by using measured boot and standard Linux security features
 \end{frame}
+\begin{NoHyper}
+\note{
+  So my work presents a software-level framework that enforces authentication for these operating system entities for the TPM at the operating system level,
+  specifically using measured boot with standard Linux security features
+}
+\end{NoHyper}
 
 \section[Motivation]{Motivation}
 
@@ -95,9 +113,18 @@
   \begin{itemize}
     \item We are concerned about the authenticity of signed messages
     \item An adversary may access and use a private key to sign falsified data
-    \item We want to ensure only the intended owner of a private key can actually use it to demonstate authenticity
+    \item We want to ensure only the intended owner of a private key can actually use it for the purposes of demonstate authenticity
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+As a motivating example, consider the usage of public key cryptography in the context of integrity and authentication,
+where private keys are used to sign messages.
+An adversary may access and use a private key to sign falsified data.
+We want to ensure only the intended owner of a private key can actually use it
+for the purposes of demonstrating authenticity.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Adversary}
@@ -110,10 +137,19 @@
     \item Modify the boot setup
     \item Reboot the system
   \end{itemize}
-  \note[item]{Thus, the adversary can make any request to the TPM}
-  \note[item]{The adversary cannot use physical attacks to leak memory, and we trust the hardware and firmware}
-
 \end{frame}
+
+\begin{NoHyper}
+\note{
+  We are considering a relatively strong adversary, who, without our framework, can make extensive changes to our system including
+  accessing any file, installing kernel modules, dumping program memory, and modifying the boot setup.
+  This means the adversary can make any request to the TPM.
+  The only things we assume we can outright trust are the hardware and the firmware.
+  We assume the adversary does not have physical access to the machine, 
+  particularly so they cannot replace the hardware and firmware,
+  but also so they cannot leak memory through physical attacks.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Goal}
@@ -121,11 +157,19 @@
   We want to develop an authentication strategy for the TPM, ensuring only the correct entity can access our TPM-stored signing key.
   \begin{itemize}
     \item We do not want to cheat by trivially restricting access to the TPM
-    \note[item]{because the TPM is a valuable security mechanism that any entity should be able to use}
     \item We want to have minimal impact on the usability of the system
     \item We do not want to reduce user/administrator agency, e.g.\ by restricting root access
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  Our specific goal is to develop an authentication strategy for the TPM to ensure only the correct entity can access a key.
+  We particuarly have three restrictions we want to abide by:
+  First, do not cheat by restricting access to the TPM, because the TPM is a valuable security mechanism that any entity should be able to use for its own purposes.
+  Second, have minimal impact on the usability of the system in general.
+  In particular, third, minimize the impact on user/administrator agency, for example restricting access to root would fall under this category
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Strategy}
@@ -140,6 +184,15 @@
     \item With \textbf{encryption} and \textbf{measured boot}, the secret will not be available when protections are not enabled properly
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  Our strategy is to use mandatory access controls, integrity mechanisms, file encryption, and measured boot to properly authenticate OS entities.
+  Specifically, a secret is required to access a TPM-stored signing key.
+  Mandatory access control determines which entities can access the secret.
+  Integrity ensures those entities are uncorrupted.
+  Finally, encryption and measured boot protect the secret when the MAC and integrity protections are not enabled properly.
+}
+\end{NoHyper}
 
 \begin{frame}
   While this is the solution we implement, we want to note:
@@ -148,10 +201,18 @@
     \item Leveraging \textit{currently underutilized} TPM features can negate the \textbf{secret} requirement (future work)
   \end{enumerate}
 \end{frame}
+\begin{NoHyper}
+\note{
+  There are two important things to note about this strategy:
+  The first is that this strategy is flexible in the mechanisms used for each individual part.
+  For example, while we choose SELinux as our mandatory access control mechanism, any mandatory access control mechanism should be sufficient.
+  The other important note is that there are TPM features which are currently underutilized and undersupported that can negate the mildly concerning requirement to protect a secret,
+  which we will discuss further but ultimately leave as future work.
+}
+\end{NoHyper}
 
 \section[Background]{Background}
 \begin{frame}
-  \note{Now for some background}
   \frametitle{Trusted Platform Module 2.0}
 
   \begin{itemize}
@@ -159,6 +220,17 @@
     \item Commonly available on modern x86 machines, as opposed to vendor-specific functionality like trusted execution environments (TEEs)
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  Now for the background of our chosen mechanisms.
+  The TPM 2.0 is a root of trust of storage for keys and measurements,
+  as well as a root of trust for reporting those measurements.
+  The original TPM was a hardware module, but now most TPMs are implemented in the firmware of x86 processors,
+  which has made the TPM very common, especially with encouragement from Microsoft to use them in Windows 11.
+  The TPM also has a standard specification, unlike vendor-specific Trusted Execution Environment solutions,
+  for example Intel's SGX and TDX, AMD's SEV-SNP, and ARM's TrustZone.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{TPM - Boot Measurements}
@@ -167,11 +239,21 @@
     \item Uses Platform Configuration Registers (PCRs) to store measurements with hashes
     \item PCR values are determined by hash extension operations, i.e. $x_\mathit{new} = hash(concat(x,y))$
     \item Re-calculating the PCR successfully from measurement sources indicates integrity
-      \note[item]{for cryptographically secure hash functions it is not reasonable to make a hash which lies about the measurements}
-      \note[item]{most PCRs are not resettable, they persist until the system is rebooted}
     \item This is how measured boot works: firmware measures bootloader measures OS into PCRs
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  To store boot measurements, the TPM uses Platform Configuration Registers or PCRs.
+  PCRs store a hash which is calculated by PCR extensions,
+  where the hash value being added to the PCR is appended to the PCR's current hash value and then that result is hashed again.
+  Then, taking the original sources and successfully recalculating a PCR indicates the integrity of those sources.
+  For cryptographically secure hash functions, it is not feasible to construct a hash which lies about the measurements.
+  Utilizing PCRs is how measured boot works.
+  The firmware first measures the bootloader, then the bootloader measures chosen components of the operating system, and all these measurements are stored in PCRs.
+  Finally, most PCRs are non-resettable and persist until the system reboots, so even measurements taken early in boot are trustworthy.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{TPM - Storing and Using Keys}
@@ -182,22 +264,40 @@
     \item The TPM can use keys for cryptographic operations independently of the main system hardware
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  To store keys, the TPM has dedicated memory and a top-level encryption key.
+  Keys are stored in a hierarchy, so when they are stored outside the TPM due to the TPM's limited memory, they have to be decrypted by their parent within the TPM to be used.
+  Then, the TPM can use the key internally for any desired operations, without exposing the key to the system.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{TPM - Key Authorization}
 
   \begin{itemize}
     \item Keys can require authorization checks like passwords or approved PCR values
+    \item Using a password allows any entity that knows the password to use a key,
+    while using PCRs makes it so keys can only be used if the system booted in an approved state
     \item ``Wildcard'' policies allow an administrator to approve multiple authorization checks to access a key
     \begin{itemize}
       \item Policies allow more complexity, such as requiring both a password and PCR values, or checking the boot count or system time
       \item This is the only way to have updateable PCR values for a key
     \end{itemize}
-    \item Using a password allows any entity that knows the password to use a key,
-    while using PCRs makes it so keys can only be used if the system booted in an approved state
-    \note[item]{This difference between passwords and PCRs is important for our use case}
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  To protect keys, the TPM can require authorization checks like passwords or approved PCR values.
+  Using a password requires the password to be input at runtime, while using PCRs requires the system to be booted in an approved state to use a key.
+  This difference between passwords and PCRs is important for our use case since we want the key to be easily available to the correct entity,
+  and PCRs are the better option for that.
+  The TPM also supports policies, which provide more complex features such as requiring both a password and approved PCR values,
+  or checking the boot count or system time.
+  Wildcard policies allow an administrator to dynamically approve the policies that allow access to a key,
+  and specifically this is the only way that the PCR values required for a key can be updated.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{MAC - Security-Enhanced Linux (SELinux)}
@@ -208,11 +308,21 @@
     \item For example: \begin{itemize}
       \item Reading/writing files
       \item Executing other programs
-      \item Inter-process communication
+      \item Performing inter-process communication
       \item Opening network ports
     \end{itemize}
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  Now for our software-level mechanisms.
+  SELinux provides mandatory access controls on Linux.
+  Mandatory access controls are enforced by a system-wide policy,
+  compared to discretionary access controls which are controlled by the owner of the resource, for example standard POSIX permissions.
+  SELinux uses labels applied to users, files and processes to determine their permissions such as reading and writing files,
+  executing other programs, performing inter-process communication, or opening network ports.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Integrity - Linux Integrity Measurement Architecture (IMA)}
@@ -225,6 +335,15 @@
     \item Signatures can be used instead of hashes, ensuring a file was not created by an adversary
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  For integrity we use the Linux Integrity Measurement Architecture or IMA,
+  which checks file hashes according to a policy when the file is opened.
+  When the hash does not match its expected value which is stored as a filesystem attribute,
+  the file will not be opened.
+  Signatures can also be used instead of hashes to specifically approve files and ensure they are not created by an adversary.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Integrity - Extended Verification Module (EVM)}
@@ -236,6 +355,14 @@
     \item IMA is responsible for performing EVM integrity checks
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  The Extended Verification Module or EVM is like IMA for file metadata.
+  Specifically, portable EVM signatures prevent an adversary from changing a file's metadata at runtime,
+  and we particularly care about protecting a file's SELinux label.
+  Also, EVM checks are done at the same time as IMA checks, so the appropriate rules need to be included in the IMA policy.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{File Encryption - Linux Unified Key Setup (LUKS)}
@@ -247,6 +374,14 @@
     \item We prefer LUKS over a custom file encryption strategy since it is easy to use and trivially includes file metadata
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  Finally, for file encryption we use Linux Unified Key Setup or LUKS.
+  It provides a standard, kernel-supported mechanism to encrypt filesystem images.
+  It can also use the TPM to lock a filesystem behind approved PCRs.
+  While there are plenty of alternative strategies to encrypt files, this is a clean solution for Linux, especially since we care about protecting file metadata.
+}
+\end{NoHyper}
 
 \section[Implementation]{Implementation}
 
@@ -257,15 +392,20 @@
   \input{../trust_diagram}
   \end{figure}
 
-  \note[item]{This is a visualization of our strategy, \tpmsign is the entity that is allowed to access the key by using wildcard policy \wcp}
-  \note[item]{The green arrows indicate the mandatory access controls and integrity protection,
-  SELinux will protect \tpmsign and \wcp, IMA will protect \tpmsign from being replaced by a malicious binary,
-  and EVM will protect \wcp from having its SELinux label changed}
-  \note[item]{The orange container around \wcp indicates the LUKS encryption that protects it when the system is not in an approved state}
-  \note[item]{The blue arrows indicate measurements and checks, so the protection mechanisms will be measured into PCRs,
-  and both the LUKS container will only unlock and \wcp will only be usable if they are correct}
-  \note[item]{The red arrow indicates that \tpmsign accesses the signing key \pk by using \wcp}
 \end{frame}
+\begin{NoHyper}
+\note{
+  To kick off our implementation details, this is a visualization of our strategy.
+  \tpmsign is the entity that is allowed to access the signing key \pk by using wildcard policy \wcp which is the protected secret.
+  The green arrows indicate the mandatory access controls and integrity protection:
+  SELinux will protect \tpmsign and \wcp, IMA will protect \tpmsign from being replaced by a malicious binary,
+  and EVM will protect \wcp from having its SELinux label changed.
+  The orange container around \wcp indicates the LUKS encryption that protects it when the system is not in an approved state.
+  The blue arrows indicate measurements and checks, so the protection mechanisms will be measured into PCRs,
+  and both the LUKS container will only unlock and \wcp will only be usable if they are correct.
+  The red arrow indicates that \tpmsign accesses the signing key \pk by using \wcp.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{SELinux Implementation}
@@ -274,11 +414,21 @@
     \item Our SELinux policy protects our \tpmsign binary and \wcp
     \item Since \tpmsign uses \wcp to access \pk, \tpmsign is the only program allowed to access \wcp
     \item Only trustworthy processes can interact with \tpmsign
-    \item Only \tpmsign can read \wcp
-    \item We use the recently implemented ``deny rules'' feature, which can override and prohibit existing rules, to ensure our SELinux protections are robustly enforced
+    \item We use the recently implemented \emph{deny rules} feature, which can override and prohibit existing rules, to ensure our SELinux protections are robustly enforced
     \item We ensure SELinux policy cannot be modified at runtime
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  Firstly, all the code for our policies and commands for other setup are in the paper.
+
+  Our SELinux policy is responsible for protecting the \tpmsign binary and \wcp.
+  Since \tpmsign uses \wcp to access \pk, \tpmsign is the only program allowed to access \wcp.
+  Then, only trustworthy processes can interact with \tpmsign.
+  To ensure these rules are properly enforced, we use deny rules which are a recent addition to SELinux and can override existing allow rules.
+  Finally, we ensure SELinux policy cannot be modified at runtime.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{IMA Implementation}
@@ -292,20 +442,35 @@
     \item Generally protecting the system from malicious binaries
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  Since SELinux doesn't verify integrity, we rely on our IMA policy to verify the integrity of \tpmsign, \wcp (via EVM),
+  and any loaded kernel modules.
+  As a free addition, it also generally helps to protect the system from malicious binaries.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Memory Protections}
 
   To prevent \tpmsign's memory from being leaked, which may include \wcp,
-  we disable some common debugging features:
+  we disable some common features:
   \begin{itemize}
     \item Program tracing (debugging) via SELinux
     \item Coredumps via \texttt{prctl}
     \item Swapping memory to disk via \texttt{mlockall}
     \item Access to system memory in \texttt{/proc/kcore}, \texttt{/dev/(k)mem} via \texttt{lockdown=confidentiality} mode
   \end{itemize}
-  However, we do not claim to protect against side-channel attacks
+  However, we cannot meaningfully protect against side-channel attacks
 \end{frame}
+\begin{NoHyper}
+\note{
+  Since ultimately we are still concerned about \wcp being leaked,
+  we protect \tpmsign's memory by disabling some common debugging features:
+  program tracing, coredumps, swapping memory to disk, and access to system memory.
+  However, in practice we cannot meaningfully protect against side-channel attacks that leak memory like Spectre/Meltdown.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Policy Measurement Script}
@@ -316,6 +481,13 @@
     \item After measuring, it attempts to unlock the LUKS container we use to store \wcp, which only succeeds when the measurements are approved
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  We use a script that runs during boot to measure our SELinux and IMA policies to make sure they are enabled,
+  storing the results in a PCR.
+  Afterwards, the script attempts to unlock the LUKS container that holds \wcp which only succeeds when the PCRs have been pre-approved.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Checked PCRs}
@@ -337,6 +509,17 @@
   \end{tabular}
   \end{table}
 \end{frame}
+\begin{NoHyper}
+\note{
+  Specifically, these are the PCRs that protect \wcp.
+  PCR 4 is the measurement of the bootloader,
+  PCR 7 is the secure boot configuration,
+  PCR 8 and 9 are the kernel boot details which includes our custom script,
+  and PCR 14 is the keys used to boot the system with Secure Boot.
+  These are all defined by existing specifications.
+  Finally, we use PCR 11 for storing our custom policy measurements.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{TPM Key Setup}
@@ -347,17 +530,41 @@
     \item Finally, we set up a LUKS container, again with standard commands to use PCR unlock, and put \wcp inside so it can be sealed away % TODO
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  Finally, to set up the TPM keys and \wcp themselves,
+  we create a new TPM key \pk that requires a wildcard policy for usage.
+  The wildcard policy \wcp will require the same PCRs to be checked as previously mentioned.
+  We then create a LUKS container requiring the same PCRs to seal \wcp.
+  You may be wondering how using \wcp as a secret is different than using a password.
+  While it is possible to accomplish a similar strategy by storing a password in the LUKS container,
+  using a wildcard policy provides some extra assurance that the PCRs are in the approved state.
+  It is also easy to update a wildcard policy without physical access to the system,
+  and it is easy to invalidate previous wildcard policies by updating the system or otherwise changing measurements.
+  An adversary also cannot craft a malicious policy since they are signed by an administrator.
+  Admittedly, there must still be some effort in keeping \wcp secret as we discussed with the memory protections and the LUKS container.
+}
+\end{NoHyper}
 
 \section{Evaluation}
 \begin{frame}
   \frametitle{Evaluation}
 
-  We can demonstrate the security of our framework
+  We can demonstrate the security of our framework with our Fedora implementation
   \begin{itemize}
     \item When booted without our framework, \wcp is not available and the key cannot be used. The LUKS container must be manually unlocked by an administrator with a password, which for example may be necessary to update the PCR values
     \item When booted with our framework, \tpmsign is the only entity that can read \wcp, and our protections cannot be disabled in a way that allows \wcp to be read by other entities.
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  We implemented the described framework on Fedora Linux.
+  With that implementation we can demonstrate \wcp is not accessible when the system is not in an approved boot state,
+  which may occur when our framework is not enabled.
+  Then, the LUKS container must be unlocked manually in that case, which may be necessary to update the PCR values.
+  We can also demonstrate when booted with our framework, \tpmsign is the only entity that can read \wcp and our protections cannot be disabled.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Limitations}
@@ -369,6 +576,17 @@
     but when IMA verifies binaries and kernel modules this should be extremely difficult to pull off
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  There are two mechanism related limitations of our setup:
+  the first is that the TPM is quite slow for signing, so it's not suitable when signatures need to be produced at high frequency.
+  The second is that using IMA can be quite obnoxious when it is broadly applied to a system.
+  For limitations directly with our framework,
+  we still have to be concerned about any attack that might leak \wcp,
+  and novel attacks that can corrupt the kernel at runtime to disable our protections.
+  In practice, both of these, especially the latter, should be very difficult when IMA is broadly applied.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Variations}
@@ -378,6 +596,15 @@
     \item \wcp and/or \pk can be reprovisioned on every boot to reduce concerns around unapproved boots, at the cost of management complexity
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  We did consider a few variations on our final setup.
+  First, using bespoke kernel modules to perform SELinux- and IMA- style protections,
+  as well as using unified kernel images to boot the system, could reduce configuration complexity.
+  Second, it would be possible to protect the key files as a secret instead of \wcp, but this really only restricts optimization opportunites without improving the security at all.
+  Third, it is possible to reprovision \wcp or \pk on every boot, but this would increase management complexity.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Future Work}
@@ -389,6 +616,19 @@
     \item \textbf{Resettable PCRs:} Some PCRs are intentionally resettable at runtime, also intended to be managed by the OS. If Linux used a resettable PCR to indicate the current program/user accessing the TPM, this could also be used for authentication.
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  We also obviously spent a lot of time thinking about how to improve on the security limitations,
+  specifically the requirement for \wcp to be secret.
+  For that, there are two potential future avenues:
+  The TPM supports localities which are intended to indicate the origin of a command, like hardware, kernel, or user-level software,
+  but it trusts the operating system to manage localities.
+  If Linux/SELinux supported and protected localities, they could be used for authentication by restricting access to specific localities.
+  The TPM also has a couple resettable PCRs which are also intended to be managed by the operating system.
+  A resettable PCR could be used to indicate the current entity accessing the TPM, and be required by \wcp.
+  Unfortunately, both of these options are not currently supported in Linux, so we left them as future work.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Related Work}
@@ -396,7 +636,7 @@
   \begin{itemize}
     \item K\"uhn et al. \cite{Kuhn:Realizing-Property-Based-Attestation:2007}: Property Based Attestation
     \item CoCoTPM \cite{Pecholt:CoCoTPM-Secure-vTPM:2022}: virtualized TPMs; Hybrid TPM: \cite{Kim:hTPM-Hybrid-TPM:2019}
-    \item SECRET \cite{Jang:SeCReT:2015}: Securing ARM TrustZone session keys on page access
+    \item SeCReT \cite{Jang:SeCReT:2015}: Securing ARM TrustZone session keys on page access
     \item RESEKRA \cite{Gomez:RESEKRA:2022}: Third party verification and wildcard policy approval
     \item Wagner et al. \cite{Wagner:Distributed-Usage-Control-SGX:2018}: Develop a similar technique to ours using the TPM and Intel SGX
     \begin{itemize}
@@ -406,12 +646,33 @@
     \end{itemize}
   \end{itemize}
 \end{frame}
+\begin{NoHyper}
+\note{
+  For related work, there is plenty of work on attestation and the TPM.
+  Of specific relevance,
+  Property Based Attestation works towards improving the flexibility of measurements.
+  CoCoTPM deveolps virtualized TPMs for use with TEEs, and Hybrid TPM develops software-hardware hybrid TPMs for performance.
+  SeCReT makes some modifications to the Linux kernel to protect keys in memory for use with ARM TrustZone. 
+  RESEKRA develops wildcard policy reprovisioning.
+  Finally, Wagner et al. developed a similar technique to ours using Intel SGX,
+  but they did not recognize the viability of our strategy.
+  SGX is also only available on Intel systems, and furthermore it is now deprecated with no direct alternative.
+}
+\end{NoHyper}
 
 \section{Conclusion}
 
 \begin{frame}
   \frametitle{Conclusion}
+  Our framework successfully uses the TPM, measured boot, SELinux, IMA, EVM, and LUKS to protect private keys
+  from highly-capable adversaries.
 \end{frame}
+\begin{NoHyper}
+\note{
+  So, our framework successfully uses the TPM, measured boot, SELinux, IMA, EVM, and LUKS to protect private keys
+  from highly-capable adversaries.
+}
+\end{NoHyper}
 
 \begin{frame}
   \frametitle{Questions?}
@@ -427,6 +688,9 @@
   \texttt{loganschmalz@ku.edu}
 
 \end{frame}
+\begin{NoHyper}
+\note{And the floor is open for questions.}
+\end{NoHyper}
 
 \begin{frame}[allowframebreaks] % Allow bibliography to span multiple frames
   \frametitle{References}
